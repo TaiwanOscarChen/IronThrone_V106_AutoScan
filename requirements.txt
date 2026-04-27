@@ -1,0 +1,6 @@
+pymongo[srv]
+dnspython
+requests
+beautifulsoup4
+pandas
+urllib3
