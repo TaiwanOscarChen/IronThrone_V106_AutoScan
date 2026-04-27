@@ -7,13 +7,14 @@ import time
 import random
 import urllib3
 import pandas as pd
+import os
 
 # ==========================================
 # [系統防護層] 確保 HMI 終端穩定性
 # ==========================================
-# 強制輸出為 UTF-8，消除 cp950 停機異常，保護設備工程師模式下的系統穩定
+# 強制輸出為 UTF-8，消除 cp950 停機異常
 sys.stdout.reconfigure(encoding='utf-8')
-# 忽略 SSL 憑證警告 (因應部分券商或政府官網憑證長期過期之容錯處理)
+# 忽略 SSL 憑證警告 (因應部分政府官網憑證過期之容錯處理)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ==========================================
@@ -22,13 +23,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 CONNECTION_STRING = "mongodb+srv://qianhao_chen:Aa0983770098@cluster0.gdnkemb.mongodb.net/?appName=Cluster0"
 
 try:
-    print("Connecting to MongoDB Atlas [IronThrone Engine V106.9]...")
+    print("Connecting to MongoDB Atlas [IronThrone Engine V106.12]...")
     client = pymongo.MongoClient(CONNECTION_STRING)
     db = client["crawler_db"]
     collection = db["scraped_articles"]
-    print("✅ 雲端資料庫已連線！全方位策略模組啟動中...\n")
+    print("✅ 雲端資料庫已連線！自動化決策矩陣上線中...\n")
 except Exception as e:
-    print(f"❌ RCA 診斷：資料庫連線異常，請檢查網路或密碼。Error: {e}")
+    print(f"❌ RCA 診斷：資料庫連線異常。Error: {e}")
     exit()
 
 # ==========================================
@@ -62,11 +63,11 @@ NAME_MAP = {
 }
 
 # ==========================================
-# 3. 爬蟲主模組 (數據收集)
+# 3. 爬蟲主模組 (具備自動標籤功能)
 # ==========================================
 def scrape_and_save(target_url, category="Standard"):
     """
-    功能：自動抓取網頁標題與內容，存入 MongoDB。
+    功能：自動抓取網頁標題與內容，判斷情緒，存入 MongoDB。
     """
     print(f"🚀 掃描目標 [{category}]: {target_url}")
     user_agents = [
@@ -82,61 +83,71 @@ def scrape_and_save(target_url, category="Standard"):
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, "html.parser")
             title_tag = soup.find("h1") or soup.find("title")
-            title = title_tag.text.strip() if title_tag else "No Title"
+            title = title_tag.text.strip() if title_tag else ""
+            
+            # --- [數據清洗防呆]：長度小於3則不予呈現 ---
+            if not title or len(title) <= 3:
+                print("⚠️ RCA 診斷：抓取到無效標題或短代碼，略過入庫。")
+                return
+
             paragraphs = soup.find_all("p")
             content = "\n".join([p.text.strip() for p in paragraphs if len(p.text.strip()) > 10])
+
+            # --- [情緒引擎核心 V1.0] ---
+            impact = "Neutral"
+            if any(k in content for k in ["漲價", "擴產", "創新高", "認證通過", "買超", "噴出"]):
+                impact = "Positive"
+            elif any(k in content for k in ["關稅", "制裁", "砍單", "跌破", "賣超", "崩跌"]):
+                impact = "Negative"
 
             article_data = {
                 "source_url": target_url,
                 "category": category,
                 "title": title,
                 "content": content,
+                "impact": impact,  # 👈 寫入自動判斷的情緒標籤
                 "crawled_at": datetime.now()
             }
+            
             collection.update_one({"source_url": target_url}, {"$set": article_data}, upsert=True)
-            print(f"✅ 資料入庫成功: {title[:20]}...\n")
+            print(f"✅ [{impact}] 資料入庫成功: {title[:20]}...\n")
         else:
             print(f"⚠️ 請求失敗，代碼: {response.status_code}\n")
     except Exception as e:
         print(f"❌ 錯誤: {e}\n")
 
 # ==========================================
-# 4. 決策分析模組 (Indentation Fixed)
+# 4. 決策分析模組
 # ==========================================
 def analyze_today_signals():
     """
-    功能：從 MongoDB 讀取數據，比對股票池，輸出情緒偵測表。
+    功能：從 MongoDB 讀取數據，比對股票池，輸出即時偵測報告。
     """
     print("獅王戰神決策系統：正在執行全維度數據比對...")
     
-    # 1. 取得今日數據 (24小時內)
+    # 取得今日數據
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    latest_intel = collection.find({"crawled_at": {"$gte": today}}).sort("crawled_at", -1).limit(50)
+    latest_intel = collection.find({"crawled_at": {"$gte": today}}).sort("crawled_at", -1).limit(100)
 
     signals_found = []
     
-    # 2. 核心比對邏輯
     for intel in latest_intel:
         title = intel.get("title", "")
         content = intel.get("content", "")
+        impact_tag = intel.get("impact", "Neutral")
         
         for code, name in NAME_MAP.items():
             if name in title or name in content:
-                impact = "Neutral"
-                # 偵測關鍵字 (依據 K線與籌碼面文件)
-                if any(k in content for k in ["漲價", "擴產", "創新高", "認證通過", "買超"]):
-                    impact = "Positive (利多)"
-                elif any(k in content for k in ["關稅", "制裁", "砍單", "跌破", "賣超"]):
-                    impact = "Negative (避雷)"
+                # 轉換為更直觀的顯示文字
+                status = "Positive (利多)" if impact_tag == "Positive" else "Negative (避雷)" if impact_tag == "Negative" else "Neutral"
                 
                 signals_found.append({
                     "代碼": code,
                     "標的": name,
-                    "情緒": impact,
+                    "情緒": status,
                     "時效": intel.get("crawled_at").strftime('%H:%M')
                 })
 
-    # 3. 結構化輸出
     if signals_found:
         df_signals = pd.DataFrame(signals_found).drop_duplicates(subset=['標的'])
         print("\n--- 📢 今日核心標的情緒偵測報告 ---")
@@ -146,11 +157,10 @@ def analyze_today_signals():
         print("\n今日尚未偵測到核心標的之明確情緒訊號。")
 
 # ==========================================
-# 5. 全方位執行矩陣 (彙整全部資料源)
+# 5. 全方位執行矩陣
 # ==========================================
 if __name__ == "__main__":
     
-    # 資料源矩陣
     news_urls = [
         "https://news.cnyes.com/news/cat/headline",
         "https://tw.stock.yahoo.com/news/",
@@ -166,7 +176,7 @@ if __name__ == "__main__":
 
     all_active = [(u, "Matrix_Scan") for u in news_urls]
     
-    print(f"IronThrone V106.9: 開始執行 {len(all_active)} 條戰略資訊流掃描...\n")
+    print(f"IronThrone V106.12: 開始執行 {len(all_active)} 條戰略資訊流掃描...\n")
 
     for url, cat in all_active:
         scrape_and_save(url, cat)
@@ -175,4 +185,4 @@ if __name__ == "__main__":
     # 執行最終分析
     analyze_today_signals()
 
-    print("\n[V106.9 系統報告]: 數據與決策矩陣同步完畢。")
+    print("\n[V106.12 系統報告]: 數據與決策矩陣同步完畢。")
