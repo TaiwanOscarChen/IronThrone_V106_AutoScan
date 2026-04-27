@@ -1,0 +1,2 @@
+# IronThrone_V106_AutoScan
+獅王戰神全方位量化巡檢系統
