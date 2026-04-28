@@ -25,7 +25,8 @@
     <div class="footer">絕對紀律：獲利 20% 減碼、跌破 20MA 停損</div>
 
     <script>
-        const _supabase = supabase.createClient('https://gdnkemb.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg');
+        // 大師已為你填入截圖中正確的專案地址與 Anon Key
+        const _supabase = supabase.createClient('https://lhgtfiwrraylcfiybvew.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg');
         async function loadData() {
             const { data, error } = await _supabase.from('lion_king_signals').select('*').order('id');
             if (error) { document.getElementById('status').innerText = "連線失敗：" + error.message; return; }
