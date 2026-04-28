@@ -1,11 +1,8 @@
 streamlit
-pymongo
-dnspython
 pandas
 yfinance
-FinMind
 pandas-ta
-beautifulsoup4
-lxml
+FinMind
 requests
+beautifulsoup4
 feedparser
