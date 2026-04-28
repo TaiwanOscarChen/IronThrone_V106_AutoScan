@@ -3,7 +3,7 @@ pymongo[srv]
 pandas
 yfinance
 FinMind
-pandas_ta
+pandas-ta
 beautifulsoup4
 lxml
 requests
