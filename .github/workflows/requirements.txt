@@ -1,8 +1,6 @@
 streamlit
 pandas
 yfinance
-pymongo
-dnspython
+supabase
 FinMind
 requests
-feedparser
