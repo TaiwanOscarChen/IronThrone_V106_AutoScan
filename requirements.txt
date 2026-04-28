@@ -1,8 +1,10 @@
 streamlit
 pymongo[srv]
-dnspython
-requests
-beautifulsoup4
 pandas
-urllib3
 yfinance
+FinMind
+pandas_ta
+beautifulsoup4
+lxml
+requests
+feedparser
