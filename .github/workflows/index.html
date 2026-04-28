@@ -1,43 +1,52 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8"><title>獅王戰神 V108 指揮部</title>
+    <meta charset="UTF-8"><title>獅王戰神 V108 終極指揮部</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
-        body { background: #0b0e14; color: #e6edf3; font-family: sans-serif; padding: 40px; }
-        .card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
-        .stock-id { color: #8b949e; font-size: 14px; }
-        .stock-name { font-size: 24px; font-weight: bold; margin: 10px 0; }
-        .price { font-size: 20px; color: #58a6ff; }
-        .signal { margin-top: 15px; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; }
-        .stop-loss { background: #490e0e; color: #ff7b72; }
-        .buy { background: #0e4429; color: #3fb950; }
+        body { background: #0b0e14; color: #e6edf3; font-family: "Segoe UI", sans-serif; padding: 20px; }
+        h1 { color: #58a6ff; text-align: center; border-bottom: 2px solid #30363d; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 15px; transition: 0.3s; }
+        .card:hover { border-color: #58a6ff; transform: translateY(-5px); }
+        .stock-header { display: flex; justify-content: space-between; align-items: center; }
+        .stock-name { font-size: 20px; font-weight: bold; }
+        .price { font-size: 24px; color: #79c0ff; margin: 10px 0; font-family: monospace; }
+        .signal { padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; margin-top: 10px; }
+        .danger { background: #490e0e; color: #ff7b72; border: 1px solid #f85149; }
+        .success { background: #0e4429; color: #3fb950; border: 1px solid #238636; }
+        .footer { text-align: center; color: #8b949e; margin-top: 50px; font-size: 12px; }
     </style>
 </head>
 <body>
     <h1>🦁 獅王戰神 V108：量價決策矩陣</h1>
-    <p>自動掃描 20MA 生死線 | 獲利 20% 減碼、跌破 20MA 停損</p>
-    <div id="dashboard" class="card-container">載入機台數據中...</div>
+    <div id="status" style="text-align:center; color:#8b949e;">機台同步中...</div>
+    <div id="dashboard" class="grid"></div>
+    <div class="footer">絕對紀律：獲利 20% 減碼、跌破 20MA 停損</div>
 
     <script>
-        const _supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_ANON_KEY');
+        const _supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
         async function loadData() {
-            let { data } = await _supabase.from('lion_king_signals').select('*').order('id');
+            const { data, error } = await _supabase.from('lion_king_signals').select('*').order('id');
+            if (error) { document.getElementById('status').innerText = "連線失敗：" + error.message; return; }
+            document.getElementById('status').innerText = "數據最後更新：" + new Date().toLocaleString();
             const container = document.getElementById('dashboard');
             container.innerHTML = data.map(s => `
                 <div class="card">
-                    <div class="stock-id">${s.id}</div>
-                    <div class="stock-name">${s.name}</div>
-                    <div class="price">現價: ${s.price}</div>
-                    <div>20MA: ${s.ma20}</div>
-                    <div class="signal ${s.instruction.includes('🛑') ? 'stop-loss' : 'buy'}">
+                    <div class="stock-header">
+                        <span class="stock-name">${s.name}</span>
+                        <span style="color:#8b949e;">${s.id}</span>
+                    </div>
+                    <div class="price">${s.price.toFixed(2)}</div>
+                    <div style="font-size:13px; color:#8b949e;">20MA：${s.ma20.toFixed(2)}</div>
+                    <div class="signal ${s.instruction.includes('🛑') ? 'danger' : 'success'}">
                         ${s.instruction}
                     </div>
                 </div>
             `).join('');
         }
         loadData();
+        setInterval(loadData, 60000); // 每分鐘自動刷新
     </script>
 </body>
 </html>
