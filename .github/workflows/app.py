@@ -1,62 +1,95 @@
 import streamlit as st
 import pymongo
 import pandas as pd
-from datetime import datetime
+import yfinance as yf
+from datetime import datetime, timedelta
 
-# --- 網頁設定 ---
-st.set_page_config(page_title="獅王戰神 V106.50 戰情室", layout="wide")
+# --- 系統配置與 HMI 介面初始化 ---
+st.set_page_config(page_title="獅王戰神 V106.60 戰情室", layout="wide")
 
-# --- 資料庫連線 (建議從 Secrets 讀取) ---
+# --- 資料庫連線模組 (使用 Streamlit Secrets 確保資安) ---
 @st.cache_resource
 def init_connection():
-    # 這裡建議使用 Streamlit 的 Secrets 功能，不要把密碼直接寫在裡面
-    return pymongo.MongoClient("你的 MongoDB 連線字串")
+    # 讀取 Secrets 中的連線字串，避免密碼外洩
+    return pymongo.MongoClient(st.secrets["mongo"]["connection_string"])
 
 client = init_connection()
 db = client["crawler_db"]
 collection = db["scraped_articles"]
 
-# --- UI 設計：側邊欄 (Sidebar) ---
+# --- 核心邏輯：獲取個股技術面數據 ---
+def get_stock_data(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        df = stock.history(period="3mo")
+        if df.empty: return None
+        
+        current_price = df['Close'].iloc[-1]
+        ma20 = df['Close'].rolling(window=20).mean().iloc[-1]
+        dist_to_ma20 = ((current_price - ma20) / ma20) * 100
+        
+        return {
+            "現價": round(current_price, 2),
+            "20MA": round(ma20, 2),
+            "乖離率%": round(dist_to_ma20, 2),
+            "狀態": "✅ 站穩月線" if current_price >= ma20 else "⚠️ 跌破月線"
+        }
+    except:
+        return None
+
+# --- 側邊欄：手動進料控管 ---
 with st.sidebar:
     st.title("🛡️ 戰略指揮部")
-    st.info("目前系統監控中：80 檔核心標的")
-    
-    # 讓你可以手動輸入網址進行「即時進料」
-    input_url = st.text_input("🔗 導入新戰略網址:")
-    if st.button("執行掃描"):
-        st.warning("機台連線中... (這部分可連結到 GitHub API 觸發抓取)")
+    st.subheader("產線狀態：全自動運轉")
+    if st.button("🔄 強制重新整理數據"):
+        st.cache_data.clear()
+        st.rerun()
 
-# --- 主頁面設計 ---
-st.title("🦁 獅王戰神：量化決策儀表板")
+# --- 主網頁：個股數據戰情看板 ---
+st.title("🦁 獅王戰神 V106.60：個股多空決策終端")
 
-# 1. 核心數據摘要 (KPI Metrics)
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("今日情報量", collection.count_documents({"crawled_at": {"$gte": datetime.now().replace(hour=0)}}))
-with col2:
-    st.metric("利多標的 (Positive)", "12 檔", delta="2 檔") # 這邊可以連動資料庫
-with col3:
-    st.metric("避雷標的 (Negative)", "3 檔", delta="-1 檔", delta_color="inverse")
-
-st.divider()
-
-# 2. 情報明細表
-st.subheader("📋 最新市場情報明細")
-data = list(collection.find().sort("crawled_at", -1).limit(50))
+# 1. 讀取 MongoDB 中的情緒數據
+data = list(collection.find().sort("crawled_at", -1).limit(100))
 if data:
-    df = pd.DataFrame(data)
-    # 整理欄位
-    df = df[['crawled_at', 'title', 'category', 'impact']]
-    df.columns = ['發布時間', '情報標題', '來源分類', '情緒偵測']
+    intel_df = pd.DataFrame(data)
     
-    # UI 特效：根據情緒上色
-    def color_impact(val):
-        color = 'red' if val == 'Positive' else 'green' if val == 'Negative' else 'white'
-        return f'color: {color}'
+    # 2. 數據清洗：過濾無效標題與雜訊 (前端防呆)
+    intel_df = intel_df[intel_df['title'].str.len() > 3]
+    
+    # 3. 戰略標的篩選 (假設我們只關注 Positive/Negative 的個股)
+    st.subheader("📍 核心監控標的：技術面 x 情緒面")
+    
+    # 這裡我們模擬從新聞中萃取出股票名稱 (此處以 NAME_MAP 的邏輯進行)
+    # 為了展示效果，我們建立一個動態呈現清單
+    display_list = []
+    unique_stocks = ["2330.TW", "2317.TW", "2454.TW", "2382.TW", "3017.TW"] # 優先監控權值股
+    
+    for ticker in unique_stocks:
+        tech_info = get_stock_data(ticker)
+        if tech_info:
+            # 找尋該標的在資料庫中的最新情緒
+            # (邏輯：標題若包含該股名則關聯)
+            display_list.append({
+                "代碼": ticker,
+                "現價": tech_info["現價"],
+                "20MA": tech_info["20MA"],
+                "乖離率%": tech_info["乖離率%"],
+                "技術面": tech_info["狀態"],
+                "偵測情緒": "Positive" if ticker == "2330.TW" else "Neutral" # 範例邏輯
+            })
 
-    st.dataframe(df.style.applymap(color_impact, subset=['情緒偵測']), use_container_width=True)
+    result_df = pd.DataFrame(display_list)
+    
+    # UI 呈現：使用 DataFrame 加上顏色標註
+    def highlight_status(val):
+        color = 'background-color: #2e7d32' if "✅" in str(val) else 'background-color: #c62828' if "⚠️" in str(val) else ''
+        return color
+
+    st.table(result_df.style.applymap(highlight_status, subset=['技術面']))
+
+    # 4. 詳細情報明細
+    st.divider()
+    st.subheader("📋 原始情報追蹤 (Raw Data)")
+    st.dataframe(intel_df[['crawled_at', 'title', 'impact']], use_container_width=True)
 else:
-    st.write("目前倉庫內無物料，請檢查機台運轉狀況。")
-
-# 3. 操盤紀律提醒
-st.warning("💡 **操盤紀律：** 若情報標的出現 **Negative** 且 K 線實體跌破 **20MA**，請毫不猶豫執行物理隔離（清倉）。")
+    st.info("目前資料庫倉庫為空，請確認 GitHub Actions 進料狀況。")
