@@ -25,7 +25,7 @@
     <div class="footer">絕對紀律：獲利 20% 減碼、跌破 20MA 停損</div>
 
     <script>
-        const _supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
+        const _supabase = supabase.createClient('https://gdnkemb.supabase.co', 'sb_secret_G0RCtEkwqoycCfczmxaAfQ_1cKHAOES');
         async function loadData() {
             const { data, error } = await _supabase.from('lion_king_signals').select('*').order('id');
             if (error) { document.getElementById('status').innerText = "連線失敗：" + error.message; return; }
