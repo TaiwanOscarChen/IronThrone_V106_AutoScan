@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8"><title>獅王戰神 V108 指揮部</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <style>
+        body { background: #0b0e14; color: #e6edf3; font-family: sans-serif; padding: 40px; }
+        .card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
+        .stock-id { color: #8b949e; font-size: 14px; }
+        .stock-name { font-size: 24px; font-weight: bold; margin: 10px 0; }
+        .price { font-size: 20px; color: #58a6ff; }
+        .signal { margin-top: 15px; padding: 8px; border-radius: 6px; text-align: center; font-weight: bold; }
+        .stop-loss { background: #490e0e; color: #ff7b72; }
+        .buy { background: #0e4429; color: #3fb950; }
+    </style>
+</head>
+<body>
+    <h1>🦁 獅王戰神 V108：量價決策矩陣</h1>
+    <p>自動掃描 20MA 生死線 | 獲利 20% 減碼、跌破 20MA 停損</p>
+    <div id="dashboard" class="card-container">載入機台數據中...</div>
+
+    <script>
+        const _supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_ANON_KEY');
+        async function loadData() {
+            let { data } = await _supabase.from('lion_king_signals').select('*').order('id');
+            const container = document.getElementById('dashboard');
+            container.innerHTML = data.map(s => `
+                <div class="card">
+                    <div class="stock-id">${s.id}</div>
+                    <div class="stock-name">${s.name}</div>
+                    <div class="price">現價: ${s.price}</div>
+                    <div>20MA: ${s.ma20}</div>
+                    <div class="signal ${s.instruction.includes('🛑') ? 'stop-loss' : 'buy'}">
+                        ${s.instruction}
+                    </div>
+                </div>
+            `).join('');
+        }
+        loadData();
+    </script>
+</body>
+</html>
