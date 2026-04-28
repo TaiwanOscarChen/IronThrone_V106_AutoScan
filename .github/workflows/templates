@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>獅王戰神 終極決策終端</title>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { color: #58a6ff; text-align: center; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #8b949e; margin-bottom: 30px; }
+        
+        .btn-container { text-align: center; margin-bottom: 20px; }
+        button {
+            background-color: #238636; color: white; border: none;
+            padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer;
+        }
+        button:hover { background-color: #2ea043; }
+
+        table {
+            width: 100%; max-width: 1200px; margin: 0 auto;
+            border-collapse: collapse; background-color: #161b22;
+            border-radius: 8px; overflow: hidden;
+        }
+        th, td { padding: 15px; text-align: center; border-bottom: 1px solid #30363d; }
+        th { background-color: #21262d; font-weight: bold; }
+        
+        .danger { color: #ff7b72; font-weight: bold; }
+        .success { color: #3fb950; font-weight: bold; }
+        .warning { color: #d29922; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>🦁 獅王戰神量價決策矩陣</h1>
+    <p class="subtitle">絕對紀律：獲利 20% 減碼、跌破 20MA 停損</p>
+
+    <div class="btn-container">
+        <button onclick="updateData()">🔄 強制更新盤後數據</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>代碼</th>
+                <th>標的</th>
+                <th>現價</th>
+                <th>20MA 支撐位</th>
+                <th>零股流動性</th>
+                <th>技術態勢</th>
+                <th>操盤指令</th>
+            </tr>
+        </thead>
+        <tbody id="signal-table">
+            </tbody>
+    </table>
+
+    <script>
+        // 頁面載入時自動取得最新訊號
+        document.addEventListener("DOMContentLoaded", fetchSignals);
+
+        function fetchSignals() {
+            fetch('/api/signals')
+                .then(response => response.json())
+                .then(data => renderTable(data));
+        }
+
+        function updateData() {
+            const btn = document.querySelector('button');
+            btn.innerText = "運算中...";
+            fetch('/api/update')
+                .then(response => response.json())
+                .then(data => {
+                    btn.innerText = "🔄 強制更新盤後數據";
+                    renderTable(data.data);
+                });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('signal-table');
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                let statusClass = '';
+                if (row.技術態勢.includes('跌破')) statusClass = 'danger';
+                else if (row.技術態勢.includes('漲幅')) statusClass = 'warning';
+                else statusClass = 'success';
+
+                let tr = `<tr>
+                    <td>${row.代碼}</td>
+                    <td>${row.標的}</td>
+                    <td><strong>${row.現價}</strong></td>
+                    <td>${row.MA20}</td>
+                    <td style="color:#8b949e;">${row.流動性}</td>
+                    <td class="${statusClass}">${row.技術態勢}</td>
+                    <td class="${statusClass}">${row.操盤指令}</td>
+                </tr>`;
+                tbody.innerHTML += tr;
+            });
+        }
+    </script>
+</body>
+</html>
