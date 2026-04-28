@@ -47,7 +47,7 @@ NAME_MAP = {
 }
 
 # ==========================================
-# 2. 數據獲取與戰術運算 (邏輯精華)
+# 2. 數據獲取與戰術運算 (強固容錯版)
 # ==========================================
 @st.cache_data(ttl=900)
 def run_lion_war_engine(ticker_list):
@@ -57,17 +57,25 @@ def run_lion_war_engine(ticker_list):
             # A. 技術指標 (yfinance)
             df = yf.download(ticker, period="3mo", progress=False)
             if df.empty or len(df) < 20: continue
-            if isinstance(df.columns, pd.MultiIndex): df.columns = [c[0] for c in df.columns]
             
-            close = df['Close'].iloc[-1]
-            ma20 = df['Close'].rolling(20).mean().iloc[-1]
-            vol_5ma = df['Volume'].rolling(5).mean().iloc[-1]
-            vol_today = df['Volume'].iloc[-1]
+            # 防呆：處理 yfinance 新版多重索引問題
+            if isinstance(df.columns, pd.MultiIndex): 
+                df.columns = [c[0] for c in df.columns]
             
-            # B. 籌碼偵測 (FinMind)
+            close = float(df['Close'].iloc[-1])
+            ma20 = float(df['Close'].rolling(20).mean().iloc[-1])
+            vol_5ma = float(df['Volume'].rolling(5).mean().iloc[-1])
+            vol_today = float(df['Volume'].iloc[-1])
+            
+            # B. 籌碼偵測 (FinMind) - 獨立 Try Except，避免阻擋整條產線
             stock_id = ticker.split('.')[0]
-            inst = fm.taiwan_stock_institutional_investors(stock_id=stock_id, start_date=(datetime.now()-timedelta(days=5)).strftime("%Y-%m-%d"))
-            inst_buy = inst[inst['name'].isin(['投信', '外資及陸資(不含外資自營商)'])]['buy_sell'].sum() // 1000
+            inst_buy = 0
+            try:
+                inst = fm.taiwan_stock_institutional_investors(stock_id=stock_id, start_date=(datetime.now()-timedelta(days=5)).strftime("%Y-%m-%d"))
+                if inst is not None and not inst.empty:
+                    inst_buy = inst[inst['name'].isin(['投信', '外資及陸資(不含外資自營商)'])]['buy_sell'].sum() // 1000
+            except:
+                pass # 若 API 超時，籌碼先以 0 計算，保證技術面仍可產出
             
             # C. 戰略裁決
             status = "站穩 20MA" if close >= ma20 else "跌破 20MA"
@@ -85,9 +93,14 @@ def run_lion_war_engine(ticker_list):
                 "20MA": round(ma20, 2), "法人連買(張)": inst_buy, "量能": vol_signal,
                 "技術態勢": status, "戰略指令": cmd
             })
-        except: continue
+        except Exception as e: 
+            continue # 確保單一股票異常不會中斷整體運作
+            
+    # 防呆：如果所有股票都抓不到，返回帶有預設欄位的空表格，防止介面上色時當機
+    if len(summary_data) == 0:
+        return pd.DataFrame(columns=["代碼", "標的", "收盤", "20MA", "法人連買(張)", "量能", "技術態勢", "戰略指令"])
+        
     return pd.DataFrame(summary_data)
-
 # ==========================================
 # 3. 網頁版面設計 (UI 控制中心)
 # ==========================================
@@ -125,20 +138,26 @@ except:
 tab1, tab2, tab3 = st.tabs(["⚔️ 戰略決策矩陣", "📡 籌碼基本面掃描", "📰 市場多空情報"])
 
 with tab1:
-    with st.spinner('機台高頻運算中...'):
-        # 過濾標的 (模擬 86 檔分流)
+    with st.spinner('機台高頻運算中... (若超過 30 秒請檢查網路)'):
+        # 過濾標的
         targets = list(NAME_MAP.keys())
-        if sector == "AI 與 伺服器": targets = targets[:10]
-        elif sector == "散熱與網通": targets = targets[10:35]
+        if sector == "AI 與 伺服器": targets = targets[:11]
+        elif sector == "散熱與網通": targets = targets[11:21]
+        elif sector == "電子與半導體": targets = targets[21:40]
+        elif sector == "傳產與金融": targets = targets[-15:]
         
-        df_res = run_lion_war_engine(targets[:20]) # 限制 20 檔以維護免費機台速度
+        # 限制掃描數量以維護免費機台速度
+        df_res = run_lion_war_engine(targets[:15]) 
         
-        def color_cmd(val):
-            if "物理隔離" in str(val): return 'color: #ff4b4b; font-weight: bold;'
-            if "強攻" in str(val): return 'color: #00eb93; font-weight: bold;'
-            return ''
-            
-        st.dataframe(df_res.style.map(color_cmd, subset=['戰略指令']), use_container_width=True)
+        if not df_res.empty:
+            def color_cmd(val):
+                if "物理隔離" in str(val): return 'color: #ff4b4b; font-weight: bold;'
+                if "強攻" in str(val): return 'color: #00eb93; font-weight: bold;'
+                return ''
+                
+            st.dataframe(df_res.style.map(color_cmd, subset=['戰略指令']), use_container_width=True)
+        else:
+            st.error("⚠️ 產線進料異常：查無符合條件的數據，或 API 連線遭到阻擋。請稍後再試。")
 
 with tab2:
     st.subheader("🏛️ TWSE OpenAPI 官方估值矩陣")
