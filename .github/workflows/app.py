@@ -85,7 +85,7 @@ if data:
         color = 'background-color: #2e7d32' if "✅" in str(val) else 'background-color: #c62828' if "⚠️" in str(val) else ''
         return color
 
-   st.table(result_df.style.applymap(highlight_status, subset=['技術面']))
+   st.table(result_df.style.map(highlight_status, subset=['技術面']))
 
     # 4. 詳細情報明細
     st.divider()
