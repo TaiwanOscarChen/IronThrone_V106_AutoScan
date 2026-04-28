@@ -1,173 +1,82 @@
-import streamlit as st
-import pandas as pd
-import yfinance as yf
-import pandas_ta as ta
+from flask import Flask, render_template, jsonify
 import pymongo
-from FinMind.data import DataLoader
-from datetime import datetime, timedelta
-import requests
-import feedparser
+import yfinance as yf
+import pandas as pd
+from datetime import datetime
 
-# ==========================================
-# 0. 系統環境配置 (V108 全矩陣完全體)
-# ==========================================
-st.set_page_config(page_title="獅王戰神 V108 終極決策終端", layout="wide")
+app = Flask(__name__)
 
-# FinMind 深度授權
-FINMIND_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJkYXRlIjoiMjAyNi0wMy0zMSAyMjo0NzozMCIsInVzZXJfaWQiOiJjaGVucWlhbmhhbyIsImlwIjoiMjExLjczLjE3My4xNDUiLCJleHAiOjE3NzU1NzMyNTB9.kCR8cu4M8RpBT6iPFwoywy7G0kkifW2LDu5qS0JO-qA"
-fm = DataLoader()
-fm.login_by_token(api_token=FINMIND_TOKEN)
+# 1. MongoDB 連線配置
+MONGO_URI = "mongodb+srv://qianhao_chen:Aa0983770098@cluster0.gdnkemb.mongodb.net/?appName=Cluster0"
+client = pymongo.MongoClient(MONGO_URI)
+db = client["crawler_db"]
+collection = db["lion_king_signals"]
 
-# ==========================================
-# 1. 核心宇宙庫 (86 檔全矩陣戰略清單)
-# ==========================================
+# 2. 核心股票池 (示範部分標的，可自行補齊 80 檔)
 NAME_MAP = {
-    "2330.TW":"台積電", "2317.TW":"鴻海", "2454.TW":"聯發科", "2382.TW":"廣達", 
-    "3231.TW":"緯創", "6669.TW":"緯穎", "2356.TW":"英業達", "2376.TW":"技嘉", 
-    "2324.TW":"仁寶", "2301.TW":"光寶科", "2395.TW":"研華", "3017.TW":"奇鋐", 
-    "3324.TW":"雙鴻", "2421.TW":"建準", "3665.TW":"貿聯-KY", "2059.TW":"川湖", 
-    "3533.TW":"嘉澤", "2308.TW":"台達電", "3443.TW":"創意", "3661.TW":"世芯-KY", 
-    "3035.TW":"智原", "3034.TW":"聯詠", "2379.TW":"瑞昱", "4966.TW":"譜瑞-KY", 
-    "3529.TWO":"力旺", "8016.TWO":"矽創", "6138.TW":"茂達", "5347.TWO":"世界先進", 
-    "6770.TW":"力積電", "3363.TW":"上詮", "3450.TW":"聯鈞", "4979.TW":"華星光", 
-    "3163.TWO":"波若威", "4908.TW":"前鼎", "6442.TW":"光聖", "3081.TW":"聯亞", 
-    "2345.TW":"智邦", "5388.TWO":"中磊", "3062.TW":"建漢", "6285.TW":"啟碁", 
-    "3704.TW":"合勤控", "2419.TW":"仲琦", "3596.TWO":"智易", "4906.TW":"正文", 
-    "2359.TW":"所羅門", "2049.TW":"上銀", "2365.TW":"昆盈", "4562.TW":"穎漢", 
-    "8374.TW":"羅昇", "6640.TW":"均華", "3680.TWO":"家登", "3019.TW":"亞光", 
-    "1513.TW":"中興電", "1519.TW":"華城", "1503.TW":"士電", "1504.TW":"東元", 
-    "1514.TW":"亞力", "6806.TW":"森崴能源", "9958.TW":"世紀鋼", "1605.TW":"華新", 
-    "1609.TW":"大亞", "2408.TW":"南亞科", "2344.TW":"華邦電", "3481.TW":"群創", 
-    "2409.TW":"友達", "3260.TWO":"威剛", "8299.TWO":"群聯", "6116.TW":"彩晶", 
-    "2337.TW":"旺宏", "2303.TW":"聯電", "2603.TW":"長榮", "2609.TW":"陽明", 
-    "2615.TW":"萬海", "1536.TW":"和大", "9921.TW":"巨大", "9914.TW":"美利達", 
-    "2105.TW":"正新", "2106.TW":"建大", "6217.TWO":"中探針", "3003.TW":"健和興", 
-    "6409.TW":"旭隼", "2474.TW":"可成", "6121.TWO":"新普", "2327.TW":"國巨", 
-    "2492.TW":"華新科", "2881.TW":"富邦金"
+    "2330.TW": "台積電", "2317.TW": "鴻海", "2454.TW": "聯發科", 
+    "3017.TW": "奇鋐", "3324.TW": "雙鴻", "2603.TW": "長榮"
 }
 
-# ==========================================
-# 2. 數據獲取與戰術運算 (強固容錯版)
-# ==========================================
-@st.cache_data(ttl=900)
-def run_lion_war_engine(ticker_list):
-    summary_data = []
-    for ticker in ticker_list:
+@app.route('/api/update')
+def update_signals():
+    """執行量價結構掃描，推算 20MA 支撐與獲利滿足點，寫入資料庫"""
+    signals = []
+    for ticker, name in NAME_MAP.items():
         try:
-            # A. 技術指標 (yfinance)
-            df = yf.download(ticker, period="3mo", progress=False)
+            df = yf.download(ticker, period="3mo", interval="1d", progress=False)
             if df.empty or len(df) < 20: continue
-            
-            # 防呆：處理 yfinance 新版多重索引問題
             if isinstance(df.columns, pd.MultiIndex): 
                 df.columns = [c[0] for c in df.columns]
             
-            close = float(df['Close'].iloc[-1])
+            close_px = float(df['Close'].iloc[-1])
             ma20 = float(df['Close'].rolling(20).mean().iloc[-1])
-            vol_5ma = float(df['Volume'].rolling(5).mean().iloc[-1])
             vol_today = float(df['Volume'].iloc[-1])
             
-            # B. 籌碼偵測 (FinMind) - 獨立 Try Except，避免阻擋整條產線
-            stock_id = ticker.split('.')[0]
-            inst_buy = 0
-            try:
-                inst = fm.taiwan_stock_institutional_investors(stock_id=stock_id, start_date=(datetime.now()-timedelta(days=5)).strftime("%Y-%m-%d"))
-                if inst is not None and not inst.empty:
-                    inst_buy = inst[inst['name'].isin(['投信', '外資及陸資(不含外資自營商)'])]['buy_sell'].sum() // 1000
-            except:
-                pass # 若 API 超時，籌碼先以 0 計算，保證技術面仍可產出
+            # 零股流動性與量能基礎判定
+            liquidity = "充足" if vol_today > 1000000 else "枯竭 (避開零股交易)"
             
-            # C. 戰略裁決
-            status = "站穩 20MA" if close >= ma20 else "跌破 20MA"
-            vol_signal = "🔥 爆量" if vol_today > vol_5ma * 1.5 else "➖ 平穩"
+            # 絕對操盤紀律判定
+            profit_ratio = (close_px - ma20) / ma20
             
-            if close < ma20:
-                cmd = "🛑 物理隔離 (清倉)"
-            elif close >= ma20 and inst_buy > 0:
-                cmd = "🎯 右側強攻 (加碼)"
+            if close_px < ma20:
+                status = "🔴 跌破月線"
+                action = "物理隔離 (立即停損)"
+            elif profit_ratio >= 0.2:
+                status = "🔥 漲幅過大"
+                action = "獲利 20% 強制減碼"
             else:
-                cmd = "⏳ 觀望等待"
-                
-            summary_data.append({
-                "代碼": stock_id, "標的": NAME_MAP[ticker], "收盤": round(close, 2),
-                "20MA": round(ma20, 2), "法人連買(張)": inst_buy, "量能": vol_signal,
-                "技術態勢": status, "戰略指令": cmd
-            })
-        except Exception as e: 
-            continue # 確保單一股票異常不會中斷整體運作
+                status = "🟢 站穩 20MA"
+                action = "沿月線續抱"
+
+            signal_data = {
+                "代碼": ticker.split('.')[0],
+                "標的": name,
+                "現價": round(close_px, 2),
+                "MA20": round(ma20, 2),
+                "流動性": liquidity,
+                "技術態勢": status,
+                "操盤指令": action,
+                "更新時間": datetime.now().strftime("%Y-%m-%d %H:%M")
+            }
+            # 更新至 MongoDB
+            collection.update_one({"代碼": ticker.split('.')[0]}, {"$set": signal_data}, upsert=True)
+            signals.append(signal_data)
+        except Exception as e:
+            continue
             
-    # 防呆：如果所有股票都抓不到，返回帶有預設欄位的空表格，防止介面上色時當機
-    if len(summary_data) == 0:
-        return pd.DataFrame(columns=["代碼", "標的", "收盤", "20MA", "法人連買(張)", "量能", "技術態勢", "戰略指令"])
-        
-    return pd.DataFrame(summary_data)
-# ==========================================
-# 3. 網頁版面設計 (UI 控制中心)
-# ==========================================
-with st.sidebar:
-    st.image("https://img.icons8.com/clouds/100/lion-head.png")
-    st.title("🦁 獅王戰神 V108")
-    st.markdown("---")
-    st.header("🧠 操盤手核心鐵律")
-    st.warning("**20MA 生死線**：跌破無條件變現")
-    st.success("**停利紀律**：獲利 20% 強制減碼一半")
-    st.error("**停損紀律**：虧損 5% 強制執行市價單")
-    st.markdown("---")
-    
-    sector = st.selectbox("🎯 打擊防區選擇：", [
-        "全部標的", "AI 與 伺服器", "散熱與網通", "電子與半導體", "傳產與金融"
-    ])
-    
-    if st.button("🚀 啟動全矩陣掃描"):
-        st.cache_data.clear()
+    return jsonify({"status": "success", "message": "戰情庫更新完畢", "data": signals})
 
-st.title("🛡️ 獅王戰神 V108：終極全矩陣大一統終端")
+@app.route('/api/signals')
+def get_signals():
+    """供 HTML 前端讀取的 API 接口"""
+    data = list(collection.find({}, {"_id": 0}).sort("代碼", 1))
+    return jsonify(data)
 
-# 宏觀指標
-m_col1, m_col2, m_col3 = st.columns(3)
-try:
-    vix = yf.Ticker("^VIX").history(period="1d")['Close'].iloc[-1]
-    tsm = yf.Ticker("TSM").history(period="1d")['Close'].iloc[-1]
-    m_col1.metric("VIX 恐慌指數", f"{vix:.2f}", "🟢 穩定" if vix < 25 else "🚨 恐慌", delta_color="inverse")
-    m_col2.metric("台積電 ADR", f"{tsm:.1f}")
-    m_col3.metric("系統狀態", "V108.9 滿配運轉")
-except:
-    st.info("宏觀數據抓取中...")
+@app.route('/')
+def index():
+    """渲染 HTML 戰情室"""
+    return render_template('index.html')
 
-# 主功能分頁
-tab1, tab2, tab3 = st.tabs(["⚔️ 戰略決策矩陣", "📡 籌碼基本面掃描", "📰 市場多空情報"])
-
-with tab1:
-    with st.spinner('機台高頻運算中... (若超過 30 秒請檢查網路)'):
-        # 過濾標的
-        targets = list(NAME_MAP.keys())
-        if sector == "AI 與 伺服器": targets = targets[:11]
-        elif sector == "散熱與網通": targets = targets[11:21]
-        elif sector == "電子與半導體": targets = targets[21:40]
-        elif sector == "傳產與金融": targets = targets[-15:]
-        
-        # 限制掃描數量以維護免費機台速度
-        df_res = run_lion_war_engine(targets[:15]) 
-        
-        if not df_res.empty:
-            def color_cmd(val):
-                if "物理隔離" in str(val): return 'color: #ff4b4b; font-weight: bold;'
-                if "強攻" in str(val): return 'color: #00eb93; font-weight: bold;'
-                return ''
-                
-            st.dataframe(df_res.style.map(color_cmd, subset=['戰略指令']), use_container_width=True)
-        else:
-            st.error("⚠️ 產線進料異常：查無符合條件的數據，或 API 連線遭到阻擋。請稍後再試。")
-
-with tab2:
-    st.subheader("🏛️ TWSE OpenAPI 官方估值矩陣")
-    # 此處可加入 TWSE 官方數據展示邏輯
-    st.info("模組二十二至二十四：FinMind 深度參數計算中...")
-
-with tab3:
-    st.subheader("📡 即時市場多空情緒雷達 (Yahoo RSS)")
-    feed = feedparser.parse("https://tw.stock.yahoo.com/rss")
-    for entry in feed.entries[:5]:
-        with st.expander(f"📌 {entry.title}"):
-            st.write(f"時間: {entry.published}")
-            st.write(f"[連結]({entry.link})")
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
