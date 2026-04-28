@@ -1,3 +1,4 @@
 yfinance
 supabase
 pandas
+requests
