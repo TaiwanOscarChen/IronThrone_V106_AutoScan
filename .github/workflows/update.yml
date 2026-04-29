@@ -1,21 +1,21 @@
 name: LionKing Data Sync
 on:
   schedule:
-    - cron: '30 7 * * 1-5' # 台北時間下午 3:30 (UTC 7:30)
+    - cron: '30 7 * * 1-5' # 台灣時間下午 3:30 執行盤後運算
   workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: 檢出程式碼
         uses: actions/checkout@v3
-      - name: Setup Python
+      - name: 建立 Python 運算環境
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - name: Install dependencies
+      - name: 安裝戰神所需套件
         run: pip install -r requirements.txt
-      - name: Run Update Script
+      - name: 執行量價結構與動能運算
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
