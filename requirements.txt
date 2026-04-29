@@ -7,7 +7,7 @@ pytz
 beautifulsoup4
 feedparser
 lxml
-gradi0
+gradio
 ipywidgets
 FinMind
 shioaji
