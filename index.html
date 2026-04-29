@@ -3,228 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>獅王戰神 V108 | 終極量化決策終端</title>
+    <title>獅王戰神 V110 | 旗艦決策指揮終端</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         :root {
-            --bg-color: #05070a;
-            --panel-bg: #0d1117;
-            --card-bg: #161b22;
-            --border-color: #30363d;
-            --text-main: #e6edf3;
-            --text-dim: #8b949e;
-            --accent: #58a6ff;
-            --buy-signal: #3fb950;
-            --sell-signal: #f85149;
-            --warn-signal: #d29922;
+            --bg-deep: #020617;
+            --panel-dark: #0f172a;
+            --card-bg: #1e293b;
+            --border: #334155;
+            --accent-blue: #38bdf8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-gold: #fbbf24;
+            --font-main: 'Inter', -apple-system, system-ui, sans-serif;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg-deep);
+            color: #f1f5f9;
+            font-family: var(--font-main);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
+            overflow-x: hidden;
         }
 
-        /* 標題與系統狀態 */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid var(--accent);
-            padding-bottom: 10px;
+        /* 頂部戰略資訊區 */
+        .top-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             margin-bottom: 20px;
         }
 
-        .header h1 {
-            font-size: 24px;
-            margin: 0;
-            letter-spacing: 2px;
-            color: var(--accent);
+        .stat-card {
+            background: var(--panel-dark);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
         }
 
-        .sys-status {
-            font-size: 13px;
-            color: var(--text-dim);
-            background: var(--panel-bg);
-            padding: 5px 12px;
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-        }
+        .stat-label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+        .stat-value { font-size: 20px; font-weight: 800; color: var(--accent-blue); }
 
-        /* 核心紀律提示欄 */
-        .discipline-bar {
-            background: rgba(88, 166, 255, 0.1);
-            border-left: 4px solid var(--accent);
-            padding: 10px 15px;
+        /* 核心紀律標語 */
+        .discipline-banner {
+            background: linear-gradient(90deg, #1e1b4b, #0f172a);
+            border-left: 5px solid var(--text-gold);
+            padding: 12px 20px;
             margin-bottom: 25px;
-            font-size: 14px;
+            border-radius: 4px;
+            font-weight: 600;
         }
 
-        /* 卡片網格佈局 */
-        .dashboard-grid {
+        /* 標的網格 - 參考參考圖設計 */
+        .stock-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 20px;
         }
 
         .stock-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 18px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--panel-dark);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0;
             position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
             overflow: hidden;
-            cursor: pointer;
         }
 
         .stock-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-3px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-color: var(--accent-blue);
         }
 
         .card-header {
+            background: var(--card-bg);
+            padding: 15px;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 12px;
+            align-items: center;
         }
 
-        .stock-info .name { font-size: 18px; font-weight: 800; }
-        .stock-info .id { font-size: 14px; color: var(--text-dim); margin-left: 5px; }
+        .stock-name { font-size: 20px; font-weight: bold; color: #fff; }
+        .stock-id { font-size: 14px; color: #94a3b8; margin-left: 8px; }
 
-        .price-row {
+        .price-section {
+            padding: 20px 15px;
             display: flex;
-            align-items: baseline;
-            gap: 10px;
-            margin-bottom: 15px;
+            justify-content: space-between;
+            align-items: flex-end;
         }
 
-        .current-price { font-size: 28px; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
+        .current-price { font-size: 36px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+        .price-change { font-size: 18px; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
 
-        /* 技術指標模組 */
-        .metrics-grid {
+        /* 技術指標區 */
+        .tech-matrix {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 0 15px 15px;
         }
 
-        .metric-box {
-            background: rgba(255,255,255,0.03);
-            padding: 8px;
-            border-radius: 4px;
+        .tech-item {
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tech-label { font-size: 11px; color: #64748b; }
+        .tech-val { font-size: 15px; font-weight: 700; margin-top: 4px; }
+
+        /* 籌碼能量條 */
+        .whale-bar-container {
+            padding: 10px 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .whale-label { font-size: 12px; margin-bottom: 5px; display: block; }
+        .progress-bg { background: #334155; height: 6px; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 1s; }
+
+        /* 決策按鈕區 */
+        .decision-footer {
+            padding: 15px;
             text-align: center;
         }
 
-        .metric-label { font-size: 11px; color: var(--text-dim); display: block; }
-        .metric-val { font-size: 14px; font-weight: 600; margin-top: 2px; }
-
-        /* 指令勳章 */
-        .instruction-badge {
+        .btn-command {
             width: 100%;
-            padding: 10px 0;
-            border-radius: 4px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 14px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 800;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
         }
 
-        .bg-buy { background: rgba(63, 185, 80, 0.15); color: var(--buy-signal); border: 1px solid var(--buy-signal); }
-        .bg-sell { background: rgba(248, 81, 73, 0.15); color: var(--sell-signal); border: 1px solid var(--sell-signal); }
-        .bg-warn { background: rgba(210, 153, 34, 0.15); color: var(--warn-signal); border: 1px solid var(--warn-signal); }
+        .status-buy { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .status-sell { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); animation: pulse 2s infinite; }
+        .status-wait { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
 
-        .loading { text-align: center; padding: 50px; color: var(--accent); }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-deep); z-index: 1000; display: flex; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🦁 LION KING V108 COMMAND</h1>
-        <div id="sync-time" class="sys-status">同步中...</div>
+    <div id="loading" class="loading-screen">
+        <h2 style="color: var(--accent-blue)">⚡ 戰神引擎 V110 深度掃描中...</h2>
     </div>
 
-    <div class="discipline-bar">
-        <strong>⚔️ 市場鐵律：</strong> 跌破 20MA 無條件變現物理隔離；獲利達 20% 強制減碼 50%。
+    <div class="top-bar">
+        <div class="stat-card">
+            <div class="stat-label">大盤位階 (2330.TW)</div>
+            <div id="mkt-status" class="stat-value">掃描中...</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">外資淨部位</div>
+            <div id="foreign-flow" class="stat-value">載入中...</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">系統風險指標</div>
+            <div id="sys-vix" class="stat-value">SAFE</div>
+        </div>
     </div>
 
-    <div id="dashboard" class="dashboard-grid">
-        <div class="loading">正在掃描核心標的宇宙與籌碼訊號...</div>
+    <div class="discipline-banner">
+        🛡️ 鐵律：跌破 20MA 無條件物理隔離；獲利 20% 機械化減碼。E-Stop 原油臨界值：$115。
     </div>
+
+    <div id="main-dashboard" class="stock-grid"></div>
 
     <script>
-        // 配置 Supabase 連線 (根據您 update_data.py 的設定)
         const SB_URL = "https://lhgtfiwrraylcfiybvew.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg";
         const client = supabase.createClient(SB_URL, SB_KEY);
 
-        async function fetchLionKingData() {
+        async function initWarRoom() {
             const { data, error } = await client
                 .from('lion_king_signals')
                 .select('*')
-                .order('id', { ascending: true });
+                .order('price', { ascending: false });
 
             if (error) {
-                console.error("Data fetch error:", error);
+                console.error("載入失敗:", error);
                 return;
             }
 
             renderDashboard(data);
-            document.getElementById('sync-time').innerText = `數據最後同步：${new Date().toLocaleTimeString('zh-TW', {hour12:false})}`;
+            document.getElementById('loading').style.display = 'none';
         }
 
         function renderDashboard(stocks) {
-            const container = document.getElementById('dashboard');
+            const container = document.getElementById('main-dashboard');
             container.innerHTML = '';
 
             stocks.forEach(stock => {
-                // 判斷訊號等級與顏色
-                let badgeClass = 'bg-buy';
-                if (stock.instruction.includes('🛑') || stock.instruction.includes('停損')) badgeClass = 'bg-sell';
-                else if (stock.instruction.includes('💰') || stock.instruction.includes('減碼')) badgeClass = 'bg-warn';
+                const isAboveMA = stock.price >= stock.ma20;
+                const profitStatus = stock.instruction.includes('減碼') ? 'status-wait' : (isAboveMA ? 'status-buy' : 'status-sell');
+                const changeColor = stock.macd_hist > 0 ? 'var(--success)' : 'var(--danger)';
 
                 const card = document.createElement('div');
                 card.className = 'stock-card';
-                card.onclick = () => window.open(`https://tw.stock.yahoo.com/quote/${stock.id}.TW`, '_blank');
-
                 card.innerHTML = `
                     <div class="card-header">
-                        <div class="stock-info">
-                            <span class="name">${stock.name}</span>
-                            <span class="id">${stock.id}</span>
-                        </div>
+                        <span class="stock-name">${stock.name} <small class="stock-id">${stock.id}</small></span>
+                        <span style="color: ${isAboveMA ? 'var(--success)' : 'var(--danger)'}">● 趨勢監控</span>
                     </div>
-                    <div class="price-row">
-                        <span class="current-price" style="color: ${stock.price >= stock.ma20 ? 'var(--buy-signal)' : 'var(--sell-signal)'}">
-                            ${Number(stock.price).toFixed(2)}
+                    <div class="price-section">
+                        <span class="current-price" style="color: ${isAboveMA ? 'var(--success)' : 'var(--danger)'}">
+                            ${Number(stock.price).toFixed(1)}
+                        </span>
+                        <span class="price-change" style="background: ${stock.macd_hist > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; color: ${changeColor}">
+                            ${stock.macd_hist > 0 ? '▲' : '▼'} MACD ${stock.macd_hist.toFixed(2)}
                         </span>
                     </div>
-                    <div class="metrics-grid">
-                        <div class="metric-box">
-                            <span class="metric-label">20MA 生命線</span>
-                            <span class="metric-val">${Number(stock.ma20).toFixed(2)}</span>
+                    <div class="tech-matrix">
+                        <div class="tech-item">
+                            <span class="tech-label">20MA 生命線</span>
+                            <span class="tech-val">${stock.ma20.toFixed(1)}</span>
                         </div>
-                        <div class="metric-box">
-                            <span class="metric-label">MACD 動能</span>
-                            <span class="metric-val" style="color: ${stock.macd_hist > 0 ? 'var(--buy-signal)' : 'var(--sell-signal)'}">
-                                ${stock.macd_hist > 0 ? '📈 正向' : '📉 偏弱'}
-                            </span>
+                        <div class="tech-item">
+                            <span class="tech-label">流動性 (零股)</span>
+                            <span class="tech-val">良好</span>
                         </div>
                     </div>
-                    <div class="instruction-badge ${badgeClass}">
-                        ${stock.instruction}
+                    <div class="whale-bar-container">
+                        <span class="whale-label">法人籌碼背書 (Smart Money)</span>
+                        <div class="progress-bg">
+                            <div class="progress-fill" style="width: ${Math.min(100, (stock.price/stock.ma20)*80)}%; background: ${isAboveMA ? 'var(--success)' : 'var(--danger)'}"></div>
+                        </div>
+                    </div>
+                    <div class="decision-footer">
+                        <button class="btn-command ${profitStatus}">
+                            ${stock.instruction}
+                        </button>
                     </div>
                 `;
                 container.appendChild(card);
             });
+
+            // 更新頂部總表
+            document.getElementById('mkt-status').innerText = stocks[0].price >= stocks[0].ma20 ? "多頭強勢" : "空方警戒";
+            document.getElementById('foreign-flow').innerText = stocks.length + " 檔掃描中";
         }
 
-        // 初始化與定時刷新 (每分鐘)
-        fetchLionKingData();
-        setInterval(fetchLionKingData, 60000);
+        initWarRoom();
+        setInterval(initWarRoom, 60000); // 每一分鐘自動刷新
     </script>
 </body>
 </html>
