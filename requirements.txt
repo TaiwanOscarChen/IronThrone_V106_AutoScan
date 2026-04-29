@@ -1,4 +1,4 @@
 yfinance
-supabase
 pandas
+supabase
 requests
