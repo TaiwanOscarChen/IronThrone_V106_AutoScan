@@ -1,53 +1,296 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8"><title>獅王戰神 V108 終極指揮部</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>獅王戰神 V108 終極指揮部</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background: #0b0e14; color: #e6edf3; font-family: "Segoe UI", sans-serif; padding: 20px; }
-        h1 { color: #58a6ff; text-align: center; border-bottom: 2px solid #30363d; padding-bottom: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 15px; transition: 0.3s; }
-        .card:hover { border-color: #58a6ff; transform: translateY(-5px); }
-        .stock-header { display: flex; justify-content: space-between; align-items: center; }
-        .stock-name { font-size: 20px; font-weight: bold; }
-        .price { font-size: 24px; color: #79c0ff; margin: 10px 0; font-family: monospace; }
-        .signal { padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; margin-top: 10px; }
-        .danger { background: #490e0e; color: #ff7b72; border: 1px solid #f85149; }
-        .success { background: #0e4429; color: #3fb950; border: 1px solid #238636; }
-        .footer { text-align: center; color: #8b949e; margin-top: 50px; font-size: 12px; }
+        :root {
+            color-scheme: dark;
+            --bg: #0b0f17;
+            --panel: #151b24;
+            --panel-strong: #1c2430;
+            --border: #303b4a;
+            --text: #e6edf3;
+            --muted: #8b98a9;
+            --accent: #58a6ff;
+            --accent-soft: rgba(88, 166, 255, 0.14);
+            --success: #3fb950;
+            --success-bg: rgba(46, 160, 67, 0.16);
+            --danger: #ff7b72;
+            --danger-bg: rgba(248, 81, 73, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", "Microsoft JhengHei", Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        .app {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 36px;
+        }
+
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: end;
+            justify-content: space-between;
+            gap: 16px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .title-group h1 {
+            margin: 0;
+            color: var(--accent);
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        .subtitle {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .status {
+            min-width: min(100%, 280px);
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--panel);
+            color: var(--muted);
+            font-size: 14px;
+            text-align: right;
+        }
+
+        .status.error {
+            border-color: rgba(255, 123, 114, 0.6);
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 14px;
+            margin-top: 22px;
+        }
+
+        .card {
+            display: grid;
+            gap: 12px;
+            min-height: 180px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--panel);
+            transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            background: var(--panel-strong);
+            transform: translateY(-2px);
+        }
+
+        .stock-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .stock-name {
+            overflow-wrap: anywhere;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .stock-id {
+            flex: 0 0 auto;
+            color: var(--muted);
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 13px;
+        }
+
+        .price {
+            color: #79c0ff;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .metric {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .signal {
+            align-self: end;
+            padding: 9px 10px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            overflow-wrap: anywhere;
+        }
+
+        .signal.success {
+            border-color: rgba(63, 185, 80, 0.55);
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .signal.danger {
+            border-color: rgba(255, 123, 114, 0.55);
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .empty {
+            margin-top: 22px;
+            padding: 28px 16px;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .footer {
+            margin-top: 34px;
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        @media (max-width: 640px) {
+            .app {
+                width: min(100% - 24px, 1180px);
+                padding-top: 18px;
+            }
+
+            .header {
+                align-items: stretch;
+            }
+
+            .status {
+                text-align: left;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>🦁 獅王戰神 V108：量價決策矩陣</h1>
-    <div id="status" style="text-align:center; color:#8b949e;">機台同步中...</div>
-    <div id="dashboard" class="grid"></div>
-    <div class="footer">絕對紀律：獲利 20% 減碼、跌破 20MA 停損</div>
+    <main class="app">
+        <header class="header">
+            <div class="title-group">
+                <h1>獅王戰神 V108</h1>
+                <p class="subtitle">量價決策矩陣</p>
+            </div>
+            <div id="status" class="status" role="status" aria-live="polite">機台同步中...</div>
+        </header>
+
+        <section id="dashboard" class="dashboard" aria-label="股票訊號清單"></section>
+        <div id="emptyState" class="empty" hidden>目前沒有可顯示的訊號資料。</div>
+
+        <footer class="footer">絕對紀律：獲利 20% 減碼、跌破 20MA 停損</footer>
+    </main>
 
     <script>
-        // 大師已為你填入截圖中正確的專案地址與 Anon Key
-        const _supabase = supabase.createClient('https://lhgtfiwrraylcfiybvew.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg');
-        async function loadData() {
-            const { data, error } = await _supabase.from('lion_king_signals').select('*').order('id');
-            if (error) { document.getElementById('status').innerText = "連線失敗：" + error.message; return; }
-            document.getElementById('status').innerText = "數據最後更新：" + new Date().toLocaleString();
-            const container = document.getElementById('dashboard');
-            container.innerHTML = data.map(s => `
-                <div class="card">
-                    <div class="stock-header">
-                        <span class="stock-name">${s.name}</span>
-                        <span style="color:#8b949e;">${s.id}</span>
-                    </div>
-                    <div class="price">${s.price.toFixed(2)}</div>
-                    <div style="font-size:13px; color:#8b949e;">20MA：${s.ma20.toFixed(2)}</div>
-                    <div class="signal ${s.instruction.includes('🛑') ? 'danger' : 'success'}">
-                        ${s.instruction}
-                    </div>
-                </div>
-            `).join('');
+        const SUPABASE_URL = "https://lhgtfiwrraylcfiybvew.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg";
+        const REFRESH_INTERVAL_MS = 60000;
+
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const dashboard = document.getElementById("dashboard");
+        const status = document.getElementById("status");
+        const emptyState = document.getElementById("emptyState");
+
+        function formatNumber(value) {
+            const number = Number(value);
+            return Number.isFinite(number) ? number.toFixed(2) : "--";
         }
+
+        function setStatus(message, isError = false) {
+            status.textContent = message;
+            status.classList.toggle("error", isError);
+        }
+
+        function getSignalType(instruction = "") {
+            return instruction.includes("🛑") || instruction.includes("停損") ? "danger" : "success";
+        }
+
+        function createTextElement(tagName, className, text) {
+            const element = document.createElement(tagName);
+            element.className = className;
+            element.textContent = text;
+            return element;
+        }
+
+        function createStockCard(stock) {
+            const card = document.createElement("article");
+            card.className = "card";
+
+            const header = document.createElement("div");
+            header.className = "stock-header";
+            header.append(
+                createTextElement("div", "stock-name", stock.name || "未命名標的"),
+                createTextElement("div", "stock-id", String(stock.id ?? "--"))
+            );
+
+            const price = createTextElement("div", "price", formatNumber(stock.price));
+            const ma20 = createTextElement("div", "metric", `20MA：${formatNumber(stock.ma20)}`);
+            const signal = createTextElement("div", `signal ${getSignalType(stock.instruction)}`, stock.instruction || "等待訊號");
+
+            card.append(header, price, ma20, signal);
+            return card;
+        }
+
+        function renderStocks(stocks) {
+            dashboard.replaceChildren();
+            emptyState.hidden = stocks.length > 0;
+
+            const fragment = document.createDocumentFragment();
+            stocks.forEach((stock) => fragment.append(createStockCard(stock)));
+            dashboard.append(fragment);
+        }
+
+        async function loadData() {
+            setStatus("機台同步中...");
+
+            try {
+                const { data, error } = await db
+                    .from("lion_king_signals")
+                    .select("id,name,price,ma20,instruction")
+                    .order("id", { ascending: true });
+
+                if (error) {
+                    throw error;
+                }
+
+                renderStocks(Array.isArray(data) ? data : []);
+                setStatus(`數據最後更新：${new Date().toLocaleString("zh-TW")}`);
+            } catch (error) {
+                console.error("Supabase load failed", error);
+                setStatus(`連線失敗：${error.message || "未知錯誤"}`, true);
+            }
+        }
+
         loadData();
-        setInterval(loadData, 60000); // 每分鐘自動刷新
+        window.setInterval(loadData, REFRESH_INTERVAL_MS);
     </script>
 </body>
 </html>
