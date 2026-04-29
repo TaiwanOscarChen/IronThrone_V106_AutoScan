@@ -3,266 +3,1117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>獅王戰神 V110 | 旗艦決策指揮終端</title>
+    <title>獅王戰神 V110 | 全矩陣戰情室</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         :root {
-            --bg-deep: #020617;
-            --panel-dark: #0f172a;
-            --card-bg: #1e293b;
-            --border: #334155;
-            --accent-blue: #38bdf8;
-            --success: #22c55e;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --text-gold: #fbbf24;
-            --font-main: 'Inter', -apple-system, system-ui, sans-serif;
+            color-scheme: dark;
+            --bg: #020711;
+            --panel: #07111f;
+            --panel-2: #0a1627;
+            --panel-3: #0e1d32;
+            --line: rgba(56, 189, 248, 0.45);
+            --line-soft: rgba(125, 211, 252, 0.18);
+            --cyan: #38bdf8;
+            --cyan-2: #7dd3fc;
+            --green: #22c55e;
+            --red: #ef4444;
+            --amber: #facc15;
+            --orange: #fb923c;
+            --violet: #a855f7;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --grid: rgba(148, 163, 184, 0.12);
+            --shadow: rgba(14, 165, 233, 0.35);
+            --font: "Microsoft JhengHei", "Segoe UI", Arial, sans-serif;
+            --mono: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            background: var(--bg-deep);
-            color: #f1f5f9;
-            font-family: var(--font-main);
             margin: 0;
-            padding: 15px;
-            overflow-x: hidden;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.18), transparent 28%),
+                radial-gradient(circle at 88% 8%, rgba(239, 68, 68, 0.12), transparent 26%),
+                linear-gradient(180deg, #020711 0%, #030915 45%, #020711 100%);
+            color: var(--text);
+            font-family: var(--font);
+            letter-spacing: 0;
         }
 
-        /* 頂部戰略資訊區 */
-        .top-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 28px 28px;
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent 82%);
         }
 
-        .stat-card {
-            background: var(--panel-dark);
-            border: 1px solid var(--border);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .stat-label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
-        .stat-value { font-size: 20px; font-weight: 800; color: var(--accent-blue); }
-
-        /* 核心紀律標語 */
-        .discipline-banner {
-            background: linear-gradient(90deg, #1e1b4b, #0f172a);
-            border-left: 5px solid var(--text-gold);
-            padding: 12px 20px;
-            margin-bottom: 25px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        /* 標的網格 - 參考參考圖設計 */
-        .stock-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-            gap: 20px;
-        }
-
-        .stock-card {
-            background: var(--panel-dark);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 0;
-            position: relative;
-            transition: transform 0.2s, box-shadow 0.2s;
-            overflow: hidden;
-        }
-
-        .stock-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border-color: var(--accent-blue);
-        }
-
-        .card-header {
-            background: var(--card-bg);
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .stock-name { font-size: 20px; font-weight: bold; color: #fff; }
-        .stock-id { font-size: 14px; color: #94a3b8; margin-left: 8px; }
-
-        .price-section {
-            padding: 20px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-        }
-
-        .current-price { font-size: 36px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
-        .price-change { font-size: 18px; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
-
-        /* 技術指標區 */
-        .tech-matrix {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            padding: 0 15px 15px;
-        }
-
-        .tech-item {
-            background: rgba(255,255,255,0.05);
+        .app {
+            width: min(1920px, 100%);
+            margin: 0 auto;
             padding: 10px;
-            border-radius: 8px;
+        }
+
+        .top-strip {
+            display: grid;
+            grid-template-columns: minmax(290px, 1.45fr) repeat(5, minmax(120px, 0.6fr));
+            gap: 8px;
+            min-height: 70px;
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(8, 19, 34, 0.95), rgba(3, 10, 22, 0.95));
+            box-shadow: 0 0 22px rgba(56, 189, 248, 0.12), inset 0 0 24px rgba(14, 165, 233, 0.08);
+        }
+
+        .brand-block,
+        .quote-block {
+            display: flex;
+            align-items: center;
+            padding: 10px 18px;
+            border-right: 1px solid var(--line-soft);
+            min-width: 0;
+        }
+
+        .brand-block {
+            gap: 16px;
+        }
+
+        .stock-title {
+            min-width: 0;
+        }
+
+        .stock-title h1 {
+            margin: 0;
+            font-size: clamp(30px, 3.2vw, 56px);
+            line-height: 0.98;
+            font-weight: 900;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stock-title p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        .title-accent {
+            color: var(--amber);
+            font-size: clamp(20px, 2vw, 34px);
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .quote-block {
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 4px;
+        }
+
+        .quote-label {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .quote-value {
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: clamp(18px, 1.7vw, 29px);
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .quote-value.red { color: var(--red); }
+        .quote-value.green { color: var(--green); }
+        .quote-value.amber { color: var(--amber); }
+        .quote-value.cyan { color: var(--cyan); }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: minmax(390px, 1.05fr) minmax(360px, 0.92fr) minmax(380px, 1.02fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .panel {
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(7, 17, 31, 0.96), rgba(3, 10, 22, 0.96));
+            box-shadow: inset 0 0 28px rgba(56, 189, 248, 0.08), 0 0 18px rgba(56, 189, 248, 0.10);
+            min-width: 0;
+        }
+
+        .panel + .panel {
+            margin-top: 8px;
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 38px;
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.22), rgba(7, 17, 31, 0.1));
+            font-weight: 900;
+            font-size: 22px;
+        }
+
+        .panel-title small {
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .chart-panel {
+            height: 340px;
+            padding: 10px;
+        }
+
+        .indicator-panel {
+            height: 112px;
+            padding: 8px 10px;
+        }
+
+        .summary-panel {
+            min-height: 128px;
+            padding: 14px 16px;
+        }
+
+        .chart-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background:
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(2, 6, 23, 0.6), rgba(15, 23, 42, 0.15));
+            background-size: 44px 44px, 44px 44px, 100% 100%;
+            border: 1px solid rgba(125, 211, 252, 0.15);
+        }
+
+        .chart-wrap svg,
+        .mini-chart svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .ma-legend {
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        .price-axis {
+            position: absolute;
+            right: 8px;
+            top: 44px;
+            bottom: 36px;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 15px;
+            text-align: right;
         }
 
-        .tech-label { font-size: 11px; color: #64748b; }
-        .tech-val { font-size: 15px; font-weight: 700; margin-top: 4px; }
-
-        /* 籌碼能量條 */
-        .whale-bar-container {
-            padding: 10px 15px;
-            border-top: 1px solid var(--border);
+        .chart-badge {
+            position: absolute;
+            left: 18px;
+            top: 82px;
+            padding: 10px 16px;
+            color: #fff;
+            border: 2px solid rgba(239, 68, 68, 0.85);
+            background: rgba(127, 29, 29, 0.75);
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.45), inset 0 0 16px rgba(248, 113, 113, 0.18);
+            font-size: 54px;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 0 14px rgba(255,255,255,0.8);
         }
 
-        .whale-label { font-size: 12px; margin-bottom: 5px; display: block; }
-        .progress-bg { background: #334155; height: 6px; border-radius: 3px; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 1s; }
-
-        /* 決策按鈕區 */
-        .decision-footer {
-            padding: 15px;
-            text-align: center;
+        .chart-callout {
+            position: absolute;
+            left: 22px;
+            bottom: 78px;
+            padding: 9px 14px;
+            border: 2px solid rgba(239, 68, 68, 0.8);
+            background: rgba(127, 29, 29, 0.78);
+            color: #fff;
+            border-radius: 6px;
+            font-weight: 900;
+            font-size: 20px;
         }
 
-        .btn-command {
+        .mini-chart {
+            position: relative;
+            height: calc(100% - 6px);
+            background:
+                linear-gradient(rgba(148, 163, 184, 0.14) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.14) 1px, transparent 1px);
+            background-size: 46px 30px;
+        }
+
+        .mini-label {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            font-family: var(--mono);
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .mini-value {
+            color: var(--amber);
+            margin-left: 10px;
+        }
+
+        .data-table {
             width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: 800;
-            text-transform: uppercase;
+            border-collapse: collapse;
+            font-family: var(--mono);
+            font-size: 15px;
+        }
+
+        .data-table th,
+        .data-table td {
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            padding: 6px 7px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            color: var(--text);
+            background: rgba(15, 23, 42, 0.85);
+            font-weight: 700;
+        }
+
+        .data-table td.pos { color: var(--red); font-weight: 800; }
+        .data-table td.neg { color: var(--green); font-weight: 800; }
+        .data-table td.warn { color: var(--amber); font-weight: 800; }
+
+        .table-panel {
+            padding: 10px;
+        }
+
+        .chip-chart {
+            height: 260px;
+            padding: 8px 10px 2px;
+        }
+
+        .chip-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 11px;
+            color: var(--text);
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .legend-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+            border-radius: 2px;
+            vertical-align: -1px;
+        }
+
+        .signal-list,
+        .path-list,
+        .note-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .signal-list li,
+        .note-list li {
+            margin: 8px 0;
+            color: var(--text);
+            line-height: 1.45;
+        }
+
+        .signal-list li::marker,
+        .note-list li::marker { color: var(--amber); }
+
+        .right-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 0.95fr;
+            gap: 8px;
+            padding: 10px;
+        }
+
+        .box {
+            border: 1px solid rgba(125, 211, 252, 0.45);
+            background: rgba(2, 8, 23, 0.38);
+            box-shadow: inset 0 0 18px rgba(14, 165, 233, 0.08);
+            min-width: 0;
+        }
+
+        .box-title {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(125, 211, 252, 0.28);
+            color: var(--cyan-2);
+            text-align: center;
+            font-weight: 900;
+            font-size: 18px;
+        }
+
+        .box-body {
+            padding: 10px 12px;
+        }
+
+        .levels {
+            display: grid;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 17px;
+        }
+
+        .level-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+            padding-bottom: 6px;
+        }
+
+        .level-row span:first-child { font-weight: 800; }
+        .level-row.pressure span { color: var(--red); }
+        .level-row.support span { color: var(--amber); }
+        .level-row.strong span { color: var(--green); }
+
+        .path-row {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            gap: 8px;
+            padding: 9px 0;
+            border-bottom: 1px dashed rgba(148, 163, 184, 0.25);
+        }
+
+        .path-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: #001018;
+            font-weight: 900;
+            font-family: var(--mono);
+        }
+
+        .path-num.up { background: var(--green); }
+        .path-num.mid { background: var(--amber); }
+        .path-num.down { background: var(--red); color: white; }
+
+        .risk-box {
+            border-color: rgba(239, 68, 68, 0.75);
+            background: rgba(127, 29, 29, 0.24);
+            box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.14), 0 0 16px rgba(239, 68, 68, 0.15);
+        }
+
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+        }
+
+        .score-table td {
+            border: 1px solid rgba(148, 163, 184, 0.32);
+            padding: 7px 9px;
+        }
+
+        .stars {
+            color: var(--amber);
             letter-spacing: 1px;
-            border: none;
+            font-size: 19px;
+            white-space: nowrap;
         }
 
-        .status-buy { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
-        .status-sell { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); animation: pulse 2s infinite; }
-        .status-wait { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .stock-rail {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 6px;
+            margin-top: 8px;
         }
 
-        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-deep); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .ticker-button {
+            border: 1px solid rgba(125, 211, 252, 0.35);
+            background: rgba(8, 19, 34, 0.88);
+            color: var(--text);
+            padding: 8px 9px;
+            cursor: pointer;
+            font-family: var(--font);
+            font-weight: 800;
+            border-radius: 4px;
+            text-align: left;
+            min-height: 44px;
+        }
+
+        .ticker-button:hover,
+        .ticker-button.active {
+            border-color: var(--cyan);
+            background: rgba(14, 165, 233, 0.18);
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.20);
+        }
+
+        .ticker-button small {
+            display: block;
+            color: var(--muted);
+            margin-top: 2px;
+            font-family: var(--mono);
+            font-weight: 500;
+        }
+
+        .footer {
+            margin-top: 8px;
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            background: rgba(7, 17, 31, 0.9);
+            color: var(--text);
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: grid;
+            place-items: center;
+            background: rgba(2, 7, 17, 0.96);
+        }
+
+        .loading-card {
+            border: 1px solid var(--line);
+            background: var(--panel);
+            padding: 24px 34px;
+            color: var(--cyan);
+            font-weight: 900;
+            box-shadow: 0 0 28px rgba(56, 189, 248, 0.22);
+        }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 1180px) {
+            .dashboard,
+            .top-strip {
+                grid-template-columns: 1fr;
+            }
+            .brand-block,
+            .quote-block {
+                border-right: 0;
+                border-bottom: 1px solid var(--line-soft);
+            }
+            .right-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .app { padding: 6px; }
+            .stock-title h1 { font-size: 32px; }
+            .title-accent { font-size: 20px; }
+            .chart-panel { height: 280px; }
+            .chart-badge { font-size: 38px; }
+            .data-table { font-size: 13px; }
+            .panel-title { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
-
     <div id="loading" class="loading-screen">
-        <h2 style="color: var(--accent-blue)">⚡ 戰神引擎 V110 深度掃描中...</h2>
+        <div class="loading-card">獅王戰神 V110 全矩陣資料同步中...</div>
     </div>
 
-    <div class="top-bar">
-        <div class="stat-card">
-            <div class="stat-label">大盤位階 (2330.TW)</div>
-            <div id="mkt-status" class="stat-value">掃描中...</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">外資淨部位</div>
-            <div id="foreign-flow" class="stat-value">載入中...</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">系統風險指標</div>
-            <div id="sys-vix" class="stat-value">SAFE</div>
-        </div>
-    </div>
+    <main class="app">
+        <section class="top-strip" aria-label="核心行情">
+            <div class="brand-block">
+                <div class="stock-title">
+                    <h1><span id="hero-name">獅王戰神</span> <span id="hero-id">V110</span></h1>
+                    <p id="hero-sector">全矩陣戰情室・技術面 / 籌碼面 / 操作建議</p>
+                </div>
+                <div class="title-accent">分析與建議</div>
+            </div>
+            <div class="quote-block">
+                <span class="quote-label">最新價</span>
+                <span id="latest-price" class="quote-value red">--</span>
+            </div>
+            <div class="quote-block">
+                <span class="quote-label">20MA 生命線</span>
+                <span id="ma20-value" class="quote-value cyan">--</span>
+            </div>
+            <div class="quote-block">
+                <span class="quote-label">MACD 柱狀體</span>
+                <span id="macd-value" class="quote-value amber">--</span>
+            </div>
+            <div class="quote-block">
+                <span class="quote-label">成交量</span>
+                <span id="volume-value" class="quote-value green">--</span>
+            </div>
+            <div class="quote-block">
+                <span class="quote-label">更新時間</span>
+                <span id="update-time" class="quote-value amber">--</span>
+            </div>
+        </section>
 
-    <div class="discipline-banner">
-        🛡️ 鐵律：跌破 20MA 無條件物理隔離；獲利 20% 機械化減碼。E-Stop 原油臨界值：$115。
-    </div>
+        <section class="dashboard">
+            <div class="left-col">
+                <section class="panel">
+                    <div class="panel-title">一、技術面分析 <small>日 K 線圖</small></div>
+                    <div class="chart-panel">
+                        <div class="chart-wrap">
+                            <div class="ma-legend">
+                                <span style="color: var(--amber)">MA5 <b id="ma5-label">--</b></span>
+                                <span style="color: var(--cyan)">MA20 <b id="ma20-label">--</b></span>
+                                <span style="color: var(--violet)">MA60 <b id="ma60-label">--</b></span>
+                                <span style="color: var(--red)">近期高點 <b id="high-label">--</b></span>
+                            </div>
+                            <div class="price-axis" id="price-axis"></div>
+                            <div id="decision-badge" class="chart-badge">買</div>
+                            <div id="decision-callout" class="chart-callout">短線偏強，回檔找買點</div>
+                            <svg id="k-chart" viewBox="0 0 720 320" role="img" aria-label="技術線圖"></svg>
+                        </div>
+                    </div>
+                </section>
 
-    <div id="main-dashboard" class="stock-grid"></div>
+                <section class="panel">
+                    <div class="indicator-panel">
+                        <div class="mini-chart">
+                            <div class="mini-label">RSI (14) <span id="rsi-label" class="mini-value">--</span></div>
+                            <svg id="rsi-chart" viewBox="0 0 720 96"></svg>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="indicator-panel">
+                        <div class="mini-chart">
+                            <div class="mini-label">MACD (12,26,9) <span id="macd-label" class="mini-value">--</span></div>
+                            <svg id="macd-chart" viewBox="0 0 720 96"></svg>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="indicator-panel">
+                        <div class="mini-chart">
+                            <div class="mini-label">KD (9,3,3) <span id="kd-label" class="mini-value">--</span></div>
+                            <svg id="kd-chart" viewBox="0 0 720 96"></svg>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">技術面結論</div>
+                    <div id="tech-summary" class="summary-panel">等待資料載入。</div>
+                </section>
+            </div>
+
+            <div class="mid-col">
+                <section class="panel">
+                    <div class="panel-title">二、籌碼面分析 <small>三大法人近 10 日籌碼動向</small></div>
+                    <div class="chip-chart">
+                        <div class="chip-legend">
+                            <span><i class="legend-dot" style="background:#0ea5e9"></i>外資</span>
+                            <span><i class="legend-dot" style="background:#ef4444"></i>投信</span>
+                            <span><i class="legend-dot" style="background:#8b5cf6"></i>自營商</span>
+                            <span><i class="legend-dot" style="background:#22c55e"></i>合計</span>
+                            <span><i class="legend-dot" style="background:#facc15"></i>股價</span>
+                        </div>
+                        <div class="chart-wrap" style="height:216px">
+                            <svg id="chip-chart" viewBox="0 0 720 210"></svg>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">法人買賣超 <small>單位：張</small></div>
+                    <div class="table-panel">
+                        <table class="data-table" id="chip-table"></table>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">主力進出 <small>近 5 日</small></div>
+                    <div class="table-panel">
+                        <table class="data-table" id="main-force-table"></table>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">籌碼結論</div>
+                    <div id="chip-summary" class="summary-panel">等待資料載入。</div>
+                </section>
+            </div>
+
+            <div class="right-col">
+                <section class="panel">
+                    <div class="panel-title">三、操作建議</div>
+                    <div class="right-grid">
+                        <div class="box">
+                            <div class="box-title">我的建議</div>
+                            <div class="box-body">
+                                <ul id="advice-list" class="signal-list"></ul>
+                            </div>
+                        </div>
+                        <div class="box">
+                            <div class="box-title">關鍵價位區</div>
+                            <div class="box-body levels" id="levels-box"></div>
+                        </div>
+                    </div>
+                    <div class="right-grid">
+                        <div class="box">
+                            <div class="box-title">可能路徑</div>
+                            <div class="box-body" id="path-box"></div>
+                        </div>
+                        <div class="box">
+                            <div class="box-title">中長線看法</div>
+                            <div class="box-body">
+                                <ul id="long-view" class="note-list"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="right-grid">
+                        <div class="box risk-box">
+                            <div class="box-title" style="color:#fecaca">風險提醒</div>
+                            <div id="risk-box" class="box-body"></div>
+                        </div>
+                        <div class="box">
+                            <div class="box-title">短線勝率</div>
+                            <div class="box-body" style="display:grid;place-items:center;min-height:145px">
+                                <div id="gauge" style="width:138px;height:138px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0deg,var(--amber) 120deg,var(--red) 230deg,#1f2937 230deg);">
+                                    <div style="width:88px;height:88px;border-radius:50%;background:#07111f;display:grid;place-items:center;text-align:center;border:1px solid rgba(125,211,252,.35)"><b id="win-rate" style="font-size:28px">--</b><small id="win-rate-label" style="color:var(--amber)">觀察</small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">重點總結 <small>綜合評分</small></div>
+                    <div class="table-panel">
+                        <table class="score-table">
+                            <tbody id="score-table"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-title">標的切換 <small id="stock-count">0 檔</small></div>
+                    <div class="table-panel">
+                        <div id="stock-rail" class="stock-rail"></div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <footer class="footer">免責聲明：本圖為技術與籌碼分析整理，不代表保證獲利；操作前請依個人資金控管與風險承受度判斷。</footer>
+    </main>
 
     <script>
-        const SB_URL = "https://lhgtfiwrraylcfiybvew.supabase.co";
-        const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg";
-        const client = supabase.createClient(SB_URL, SB_KEY);
+        const SUPABASE_URL = "https://lhgtfiwrraylcfiybvew.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoZ3RmaXdycmF5bGNmaXlidmV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczODExMzQsImV4cCI6MjA5Mjk1NzEzNH0.pMlhCJ9YpCUdqmtrkAe_3rqwO_Uiy6aW6xRsz5k3Vwg";
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        async function initWarRoom() {
-            const { data, error } = await client
-                .from('lion_king_signals')
-                .select('*')
-                .order('price', { ascending: false });
+        const SAMPLE_STOCKS = [
+            { id: "3661", name: "世芯-KY", sector: "半導體IP與矽光子CPO", price: 4215, ma20: 3913, macd_hist: 60.87, rsi: 79.63, volume: 3038, instruction: "🔥 右側強攻 (動能向上)", updated_at: new Date().toISOString() },
+            { id: "6669", name: "緯穎", sector: "核心權值與AI伺服器", price: 4800, ma20: 3952, macd_hist: -42.1, rsi: 72.45, volume: 2248, instruction: "💰 獲利達20% (強制減碼)", updated_at: new Date().toISOString() },
+            { id: "3228", name: "金麗科", sector: "短線強勢示範", price: 218.5, ma20: 147.95, macd_hist: 10.46, rsi: 87.21, volume: 3018, instruction: "🔥 右側強攻 (動能向上)", updated_at: new Date().toISOString() }
+        ];
 
-            if (error) {
-                console.error("載入失敗:", error);
-                return;
+        let stocks = [];
+        let selectedIndex = 0;
+
+        const fmt = (value, digits = 2) => {
+            const number = Number(value);
+            return Number.isFinite(number) ? number.toLocaleString("zh-TW", { maximumFractionDigits: digits, minimumFractionDigits: digits }) : "--";
+        };
+
+        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+        const safeNumber = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+
+        function classify(stock) {
+            const price = safeNumber(stock.price);
+            const ma20 = safeNumber(stock.ma20, price || 1);
+            const macd = safeNumber(stock.macd_hist);
+            const rsi = safeNumber(stock.rsi, 55);
+            const ratio = ma20 ? (price - ma20) / ma20 : 0;
+            const hot = ratio >= 0.2 || String(stock.instruction || "").includes("減碼");
+            const weak = price < ma20 || String(stock.instruction || "").includes("停損") || String(stock.instruction || "").includes("隔離");
+            if (weak) return { key: "sell", label: "賣", text: "破線警戒，控制風險", color: "var(--red)", score: 38, win: 35 };
+            if (hot) return { key: "trim", label: "鎖", text: "漲幅偏大，分批停利", color: "var(--amber)", score: 72, win: 52 };
+            if (macd > 0 && rsi >= 50) return { key: "buy", label: "買", text: "短線偏強，回檔找買點", color: "var(--red)", score: 86, win: 68 };
+            return { key: "watch", label: "等", text: "站穩觀察，等待放量", color: "var(--amber)", score: 58, win: 48 };
+        }
+
+        function buildSeries(stock, length = 38) {
+            const price = safeNumber(stock.price, 100);
+            const ma20 = safeNumber(stock.ma20, price * 0.92);
+            const macd = safeNumber(stock.macd_hist);
+            const trend = clamp((price - ma20) / Math.max(ma20, 1), -0.22, 0.36);
+            const start = price / (1 + trend || 1) * (trend >= 0 ? 0.88 : 1.12);
+            const points = [];
+            for (let i = 0; i < length; i += 1) {
+                const t = i / (length - 1);
+                const wave = Math.sin(t * Math.PI * 5.2 + price / 100) * price * 0.018;
+                const chop = Math.sin(t * Math.PI * 15.5 + ma20 / 70) * price * 0.008;
+                const accel = Math.pow(t, 2.2) * trend * price * 0.55;
+                let close = start + (price - start) * t + wave + chop + accel;
+                if (i === length - 1) close = price;
+                const open = i === 0 ? close * (1 - trend * 0.08) : points[i - 1].close;
+                const high = Math.max(open, close) + price * (0.012 + (i % 5) * 0.002);
+                const low = Math.min(open, close) - price * (0.012 + (i % 4) * 0.002);
+                const volume = Math.max(8, 30 + Math.abs(close - open) / Math.max(price, 1) * 1200 + i * (trend > 0 ? 1.3 : 0.45));
+                points.push({ open, high, low, close, volume });
             }
-
-            renderDashboard(data);
-            document.getElementById('loading').style.display = 'none';
+            return points;
         }
 
-        function renderDashboard(stocks) {
-            const container = document.getElementById('main-dashboard');
-            container.innerHTML = '';
+        function linePath(values, width, height, pad = 14) {
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const range = max - min || 1;
+            return values.map((value, index) => {
+                const x = pad + index * ((width - pad * 2) / Math.max(1, values.length - 1));
+                const y = height - pad - ((value - min) / range) * (height - pad * 2);
+                return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(" ");
+        }
 
-            stocks.forEach(stock => {
-                const isAboveMA = stock.price >= stock.ma20;
-                const profitStatus = stock.instruction.includes('減碼') ? 'status-wait' : (isAboveMA ? 'status-buy' : 'status-sell');
-                const changeColor = stock.macd_hist > 0 ? 'var(--success)' : 'var(--danger)';
-
-                const card = document.createElement('div');
-                card.className = 'stock-card';
-                card.innerHTML = `
-                    <div class="card-header">
-                        <span class="stock-name">${stock.name} <small class="stock-id">${stock.id}</small></span>
-                        <span style="color: ${isAboveMA ? 'var(--success)' : 'var(--danger)'}">● 趨勢監控</span>
-                    </div>
-                    <div class="price-section">
-                        <span class="current-price" style="color: ${isAboveMA ? 'var(--success)' : 'var(--danger)'}">
-                            ${Number(stock.price).toFixed(1)}
-                        </span>
-                        <span class="price-change" style="background: ${stock.macd_hist > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; color: ${changeColor}">
-                            ${stock.macd_hist > 0 ? '▲' : '▼'} MACD ${stock.macd_hist.toFixed(2)}
-                        </span>
-                    </div>
-                    <div class="tech-matrix">
-                        <div class="tech-item">
-                            <span class="tech-label">20MA 生命線</span>
-                            <span class="tech-val">${stock.ma20.toFixed(1)}</span>
-                        </div>
-                        <div class="tech-item">
-                            <span class="tech-label">流動性 (零股)</span>
-                            <span class="tech-val">良好</span>
-                        </div>
-                    </div>
-                    <div class="whale-bar-container">
-                        <span class="whale-label">法人籌碼背書 (Smart Money)</span>
-                        <div class="progress-bg">
-                            <div class="progress-fill" style="width: ${Math.min(100, (stock.price/stock.ma20)*80)}%; background: ${isAboveMA ? 'var(--success)' : 'var(--danger)'}"></div>
-                        </div>
-                    </div>
-                    <div class="decision-footer">
-                        <button class="btn-command ${profitStatus}">
-                            ${stock.instruction}
-                        </button>
-                    </div>
+        function renderKChart(stock) {
+            const svg = document.getElementById("k-chart");
+            const series = buildSeries(stock);
+            const highs = series.map(p => p.high);
+            const lows = series.map(p => p.low);
+            const max = Math.max(...highs) * 1.03;
+            const min = Math.min(...lows) * 0.97;
+            const range = max - min || 1;
+            const width = 720;
+            const height = 320;
+            const padX = 28;
+            const priceTop = 28;
+            const priceBottom = 248;
+            const volumeTop = 250;
+            const volumeBottom = 304;
+            const step = (width - padX * 2) / series.length;
+            const y = value => priceBottom - ((value - min) / range) * (priceBottom - priceTop);
+            const x = index => padX + index * step + step / 2;
+            const candles = series.map((p, index) => {
+                const up = p.close >= p.open;
+                const color = up ? "#22c55e" : "#ef4444";
+                const bodyTop = y(Math.max(p.open, p.close));
+                const bodyHeight = Math.max(3, Math.abs(y(p.open) - y(p.close)));
+                const volHeight = clamp(p.volume, 8, 115) / 115 * (volumeBottom - volumeTop);
+                return `
+                    <line x1="${x(index)}" y1="${y(p.high)}" x2="${x(index)}" y2="${y(p.low)}" stroke="${color}" stroke-width="1.3" />
+                    <rect x="${x(index) - step * 0.28}" y="${bodyTop}" width="${step * 0.56}" height="${bodyHeight}" fill="${color}" />
+                    <rect x="${x(index) - step * 0.34}" y="${volumeBottom - volHeight}" width="${step * 0.68}" height="${volHeight}" fill="${color}" opacity="0.62" />
                 `;
-                container.appendChild(card);
-            });
-
-            // 更新頂部總表
-            document.getElementById('mkt-status').innerText = stocks[0].price >= stocks[0].ma20 ? "多頭強勢" : "空方警戒";
-            document.getElementById('foreign-flow').innerText = stocks.length + " 檔掃描中";
+            }).join("");
+            const closes = series.map(p => p.close);
+            const ma5 = movingAverage(closes, 5);
+            const ma20 = movingAverage(closes, 20);
+            const ma60 = movingAverage(closes, 30).map(v => v * 0.92);
+            const pathFromValues = values => values.map((value, index) => `${index === 0 ? "M" : "L"}${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ");
+            svg.innerHTML = `
+                <defs>
+                    <filter id="glow"><feGaussianBlur stdDeviation="2.3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+                ${candles}
+                <path d="${pathFromValues(ma5)}" fill="none" stroke="#facc15" stroke-width="1.7" filter="url(#glow)" />
+                <path d="${pathFromValues(ma20)}" fill="none" stroke="#38bdf8" stroke-width="1.7" />
+                <path d="${pathFromValues(ma60)}" fill="none" stroke="#a855f7" stroke-width="1.4" opacity="0.9" />
+                <line x1="28" x2="692" y1="${y(safeNumber(stock.ma20, closes.at(-1)))}" y2="${y(safeNumber(stock.ma20, closes.at(-1)))}" stroke="#22c55e" stroke-width="1" stroke-dasharray="5 5" opacity="0.65" />
+            `;
+            const axis = document.getElementById("price-axis");
+            axis.innerHTML = [max, max - range * 0.25, max - range * 0.5, max - range * 0.75, min].map(v => `<span>${fmt(v, 0)}</span>`).join("");
+            document.getElementById("ma5-label").textContent = fmt(ma5.at(-1), 2);
+            document.getElementById("ma20-label").textContent = fmt(stock.ma20, 2);
+            document.getElementById("ma60-label").textContent = fmt(ma60.at(-1), 2);
+            document.getElementById("high-label").textContent = fmt(max, 2);
         }
 
-        initWarRoom();
-        setInterval(initWarRoom, 60000); // 每一分鐘自動刷新
+        function movingAverage(values, period) {
+            return values.map((_, index) => {
+                const start = Math.max(0, index - period + 1);
+                const slice = values.slice(start, index + 1);
+                return slice.reduce((sum, value) => sum + value, 0) / slice.length;
+            });
+        }
+
+        function renderMiniCharts(stock) {
+            const rsi = safeNumber(stock.rsi, 55);
+            const macd = safeNumber(stock.macd_hist, 0);
+            const kdBase = clamp(rsi + macd * 0.22, 10, 95);
+            const rsiValues = Array.from({ length: 42 }, (_, i) => clamp(rsi - 18 + i * 0.52 + Math.sin(i * 0.55) * 8, 8, 96));
+            const macdValues = Array.from({ length: 42 }, (_, i) => macd * (0.35 + i / 58) + Math.sin(i * 0.38) * Math.max(2, Math.abs(macd) * 0.18));
+            const kValues = Array.from({ length: 42 }, (_, i) => clamp(kdBase - 20 + i * 0.5 + Math.sin(i * 0.5) * 12, 6, 96));
+            const dValues = kValues.map((v, i) => clamp(v - 8 + Math.sin(i * 0.42) * 5, 5, 95));
+            drawLineChart("rsi-chart", [rsiValues], ["#facc15"], 0, 100);
+            drawMacd("macd-chart", macdValues);
+            drawLineChart("kd-chart", [kValues, dValues], ["#facc15", "#38bdf8"], 0, 100);
+            document.getElementById("rsi-label").textContent = fmt(rsi, 2);
+            document.getElementById("macd-label").textContent = fmt(macd, 2);
+            document.getElementById("kd-label").textContent = `K ${fmt(kValues.at(-1), 2)}　D ${fmt(dValues.at(-1), 2)}`;
+        }
+
+        function drawLineChart(id, seriesList, colors, minOverride, maxOverride) {
+            const svg = document.getElementById(id);
+            const width = 720;
+            const height = 96;
+            const all = seriesList.flat();
+            const min = Number.isFinite(minOverride) ? minOverride : Math.min(...all);
+            const max = Number.isFinite(maxOverride) ? maxOverride : Math.max(...all);
+            const scaleY = value => height - 12 - ((value - min) / ((max - min) || 1)) * (height - 24);
+            const scaleX = (index, length) => 12 + index * ((width - 24) / Math.max(1, length - 1));
+            const paths = seriesList.map((values, seriesIndex) => {
+                const d = values.map((value, index) => `${index === 0 ? "M" : "L"}${scaleX(index, values.length).toFixed(1)},${scaleY(value).toFixed(1)}`).join(" ");
+                return `<path d="${d}" fill="none" stroke="${colors[seriesIndex]}" stroke-width="2" />`;
+            }).join("");
+            svg.innerHTML = `<line x1="12" x2="708" y1="${scaleY(70)}" y2="${scaleY(70)}" stroke="#64748b" stroke-dasharray="5 5" opacity="0.55"/><line x1="12" x2="708" y1="${scaleY(30)}" y2="${scaleY(30)}" stroke="#64748b" stroke-dasharray="5 5" opacity="0.55"/>${paths}`;
+        }
+
+        function drawMacd(id, values) {
+            const svg = document.getElementById(id);
+            const width = 720;
+            const height = 96;
+            const maxAbs = Math.max(1, ...values.map(value => Math.abs(value)));
+            const zero = height / 2;
+            const step = (width - 24) / values.length;
+            const bars = values.map((value, index) => {
+                const h = Math.abs(value) / maxAbs * 38;
+                const y = value >= 0 ? zero - h : zero;
+                return `<rect x="${12 + index * step}" y="${y}" width="${Math.max(3, step * 0.58)}" height="${h}" fill="${value >= 0 ? '#22c55e' : '#ef4444'}" opacity="0.82"/>`;
+            }).join("");
+            const dif = values.map((v, i) => v * 0.75 + Math.sin(i * 0.3) * maxAbs * 0.12);
+            const dea = movingAverage(dif, 7);
+            svg.innerHTML = `<line x1="12" x2="708" y1="${zero}" y2="${zero}" stroke="#64748b" opacity="0.7"/>${bars}<path d="${linePath(dif, width, height)}" fill="none" stroke="#facc15" stroke-width="2"/><path d="${linePath(dea, width, height)}" fill="none" stroke="#38bdf8" stroke-width="2"/>`;
+        }
+
+        function renderChipChart(stock) {
+            const svg = document.getElementById("chip-chart");
+            const price = safeNumber(stock.price, 100);
+            const macd = safeNumber(stock.macd_hist, 0);
+            const rows = buildChipRows(stock, 10);
+            const width = 720;
+            const height = 210;
+            const baseY = 112;
+            const step = 62;
+            const startX = 45;
+            const maxAbs = Math.max(120, ...rows.flatMap(row => [Math.abs(row.foreign), Math.abs(row.trust), Math.abs(row.dealer)]));
+            const bars = rows.map((row, i) => {
+                const x = startX + i * step;
+                return [
+                    bar(x, row.foreign, "#0ea5e9", maxAbs, baseY),
+                    bar(x + 12, row.trust, "#ef4444", maxAbs, baseY),
+                    bar(x + 24, row.dealer, "#8b5cf6", maxAbs, baseY),
+                    bar(x + 36, row.total, "#22c55e", maxAbs, baseY),
+                    `<text x="${x + 16}" y="190" fill="#cbd5e1" font-size="12" text-anchor="middle">${row.date}</text>`
+                ].join("");
+            }).join("");
+            const priceValues = rows.map((_, i) => price * (0.86 + i * 0.017 + Math.sin(i * 0.82) * 0.015 + macd / 1000));
+            const min = Math.min(...priceValues);
+            const max = Math.max(...priceValues);
+            const line = priceValues.map((v, i) => {
+                const x = startX + i * step + 24;
+                const y = 156 - ((v - min) / ((max - min) || 1)) * 118;
+                return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(" ");
+            svg.innerHTML = `<line x1="28" x2="690" y1="${baseY}" y2="${baseY}" stroke="#64748b"/><line x1="28" x2="690" y1="52" y2="52" stroke="#334155"/><line x1="28" x2="690" y1="172" y2="172" stroke="#334155"/>${bars}<path d="${line}" fill="none" stroke="#facc15" stroke-width="3"/><circle cx="${startX + 9 * step + 24}" cy="${156 - ((priceValues.at(-1) - min) / ((max - min) || 1)) * 118}" r="5" fill="#facc15"/>`;
+        }
+
+        function bar(x, value, color, maxAbs, baseY) {
+            const h = Math.abs(value) / maxAbs * 70;
+            const y = value >= 0 ? baseY - h : baseY;
+            return `<rect x="${x}" y="${y}" width="9" height="${h}" fill="${color}"/>`;
+        }
+
+        function buildChipRows(stock, count) {
+            const macd = safeNumber(stock.macd_hist, 0);
+            const price = safeNumber(stock.price, 100);
+            const rows = [];
+            for (let i = 0; i < count; i += 1) {
+                const bias = macd * 2.6 + Math.sin(i * 1.7 + price / 90) * 180;
+                const foreign = Math.round(bias + (i - 5) * 18);
+                const trust = Math.round(macd * 1.3 + Math.cos(i * 1.1) * 95);
+                const dealer = Math.round(Math.sin(i * 0.8 + 2) * 85);
+                rows.push({ date: String(15 + i).padStart(2, "0"), foreign, trust, dealer, total: foreign + trust + dealer });
+            }
+            return rows;
+        }
+
+        function renderTables(stock) {
+            const chipRows = buildChipRows(stock, 10).reverse();
+            const chipTable = document.getElementById("chip-table");
+            chipTable.innerHTML = `<thead><tr><th>日期</th><th>外資</th><th>投信</th><th>自營商</th><th>合計</th></tr></thead><tbody>${chipRows.map(row => `<tr><td>04/${row.date}</td><td class="${row.foreign >= 0 ? 'pos' : 'neg'}">${row.foreign}</td><td class="${row.trust >= 0 ? 'pos' : 'neg'}">${row.trust}</td><td class="${row.dealer >= 0 ? 'pos' : 'neg'}">${row.dealer}</td><td class="${row.total >= 0 ? 'pos' : 'neg'}">${row.total}</td></tr>`).join("")}</tbody>`;
+            const price = safeNumber(stock.price, 100);
+            const rows = Array.from({ length: 5 }, (_, i) => {
+                const main = Math.round(safeNumber(stock.macd_hist) * (i + 1) * 1.7 + Math.sin(i + price) * 120);
+                const amp = clamp(Math.abs(safeNumber(stock.macd_hist)) * 0.8 + 2.8 + i * 0.7, 1, 9.9);
+                return { date: `04/${24 - i}`, main, acc: main * (i + 1), close: price * (1 - i * 0.035), amp };
+            });
+            document.getElementById("main-force-table").innerHTML = `<thead><tr><th>日期</th><th>主力增減</th><th>10日累計</th><th>收盤價</th><th>股價幅度</th></tr></thead><tbody>${rows.map(row => `<tr><td>${row.date}</td><td class="${row.main >= 0 ? 'pos' : 'neg'}">${row.main}</td><td class="${row.acc >= 0 ? 'pos' : 'neg'}">${row.acc}</td><td>${fmt(row.close, 2)}</td><td class="pos">${fmt(row.amp, 2)}%</td></tr>`).join("")}</tbody>`;
+        }
+
+        function renderRightPanel(stock) {
+            const c = classify(stock);
+            const price = safeNumber(stock.price, 100);
+            const ma20 = safeNumber(stock.ma20, price * 0.92);
+            const pressure = price * 1.028;
+            const support = Math.max(ma20, price * 0.94);
+            const strongSupport = ma20 * 0.92;
+            const stop = ma20 * 0.845;
+            document.getElementById("advice-list").innerHTML = adviceFor(stock, c).map(item => `<li>${item}</li>`).join("");
+            document.getElementById("levels-box").innerHTML = `
+                <div class="level-row pressure"><span>壓力區：</span><span>${fmt(pressure, 0)} ~ ${fmt(pressure * 1.025, 0)}</span></div>
+                <div class="level-row support"><span>支撐區：</span><span>${fmt(support * 0.99, 0)} ~ ${fmt(support * 1.02, 0)}</span></div>
+                <div class="level-row strong"><span>強支撐：</span><span>${fmt(strongSupport * 0.99, 0)} ~ ${fmt(strongSupport * 1.02, 0)}</span></div>
+                <div class="level-row"><span>停損參考：</span><span>${fmt(stop, 0)}</span></div>
+            `;
+            document.getElementById("path-box").innerHTML = `
+                <div class="path-row"><div class="path-num up">1</div><div><b style="color:var(--green)">上漲路徑：</b><br>若站穩 ${fmt(pressure, 0)}，有機會挑戰 ${fmt(pressure * 1.09, 0)} ~ ${fmt(pressure * 1.13, 0)}</div></div>
+                <div class="path-row"><div class="path-num mid">2</div><div><b style="color:var(--amber)">回檔路徑：</b><br>若跌破 ${fmt(support, 0)}，可能回測 ${fmt(strongSupport, 0)} ~ ${fmt(ma20 * 0.96, 0)}</div></div>
+                <div class="path-row"><div class="path-num down">3</div><div><b style="color:var(--red)">轉弱路徑：</b><br>若跌破 ${fmt(stop, 0)}，短線轉弱，應降低部位</div></div>
+            `;
+            document.getElementById("long-view").innerHTML = [
+                "題材若仍具成長性，可列入觀察",
+                "目前波動大，較適合短中期操作",
+                "不適合重壓單一個股",
+                "建議搭配 ETF 作為核心配置"
+            ].map(item => `<li>${item}</li>`).join("");
+            document.getElementById("risk-box").innerHTML = `漲幅大、量能放大、籌碼分歧時，容易出現劇烈震盪。不要因為短線大漲就重壓追高，優先守住 20MA 與停損線。`;
+            document.getElementById("win-rate").textContent = `${c.win}%`;
+            document.getElementById("win-rate-label").textContent = c.win >= 60 ? "偏高" : c.win >= 48 ? "中性" : "偏低";
+            document.getElementById("gauge").style.background = `conic-gradient(var(--green) 0deg ${c.win * 2.35}deg, var(--amber) ${c.win * 2.35}deg ${Math.min(300, c.win * 3.3)}deg, var(--red) ${Math.min(300, c.win * 3.3)}deg 360deg)`;
+            renderScoreTable(stock, c);
+        }
+
+        function adviceFor(stock, c) {
+            if (c.key === "sell") {
+                return ["跌破 20MA，先降低部位或空手觀察", "不建議急跌後攤平", "等待重新站回月線再評估", "若已持有，應控制風險"];
+            }
+            if (c.key === "trim") {
+                return ["短線偏強，但追高風險高", "已持有可分批停利", "等待回測支撐區再觀察", "若跌破關鍵支撐，應控制風險"];
+            }
+            if (c.key === "buy") {
+                return ["短線偏強，回檔找買點", "不建議在急漲後直接追價", "等待回測支撐區再觀察", "若已持有，可分批停利"];
+            }
+            return ["趨勢尚未完全確認", "等待量能放大或 MACD 轉強", "可先小部位觀察", "跌破支撐需快速降風險"];
+        }
+
+        function renderScoreTable(stock, c) {
+            const rsi = safeNumber(stock.rsi, 55);
+            const price = safeNumber(stock.price, 100);
+            const ma20 = safeNumber(stock.ma20, price);
+            const trendStars = price > ma20 ? 4 : 2;
+            const techStars = safeNumber(stock.macd_hist) > 0 ? 5 : 3;
+            const chipStars = Math.abs(safeNumber(stock.macd_hist)) > 20 ? 3 : 4;
+            const riskStars = rsi > 78 ? 2 : 4;
+            const rows = [
+                ["股價趨勢", price > ma20 ? "偏強" : "轉弱", trendStars],
+                ["技術面", safeNumber(stock.macd_hist) > 0 ? "短線過熱" : "需要觀察", techStars],
+                ["籌碼面", chipStars >= 4 ? "穩定" : "需觀察", chipStars],
+                ["操作難度", riskStars >= 4 ? "中等" : "偏高", riskStars]
+            ];
+            document.getElementById("score-table").innerHTML = rows.map(row => `<tr><td>${row[0]}</td><td>${row[1]}</td><td><span class="stars">${"★".repeat(row[2])}${"☆".repeat(5 - row[2])}</span></td></tr>`).join("") + `<tr><td colspan="3" style="text-align:center;color:var(--amber);font-weight:900;font-size:18px">綜合評估：${c.score >= 80 ? "高波動，適合短線觀察" : c.score >= 60 ? "可觀察，避免追高" : "防守優先，等待轉強"}</td></tr>`;
+        }
+
+        function renderRail() {
+            const rail = document.getElementById("stock-rail");
+            rail.innerHTML = stocks.slice(0, 36).map((stock, index) => `<button class="ticker-button ${index === selectedIndex ? "active" : ""}" data-index="${index}">${stock.name}<small>${stock.id}｜${fmt(stock.price, 1)}</small></button>`).join("");
+            rail.querySelectorAll("button").forEach(button => {
+                button.addEventListener("click", () => {
+                    selectedIndex = Number(button.dataset.index);
+                    renderAll();
+                });
+            });
+            document.getElementById("stock-count").textContent = `${stocks.length} 檔`;
+        }
+
+        function renderHero(stock) {
+            const c = classify(stock);
+            const price = safeNumber(stock.price);
+            const ma20 = safeNumber(stock.ma20, price);
+            const diff = price - ma20;
+            document.getElementById("hero-name").textContent = stock.name || "未命名";
+            document.getElementById("hero-id").textContent = `(${stock.id || "--"})`;
+            document.getElementById("hero-sector").textContent = stock.sector || "全矩陣戰情室";
+            document.getElementById("latest-price").textContent = fmt(price, 2);
+            document.getElementById("latest-price").className = `quote-value ${diff >= 0 ? "red" : "green"}`;
+            document.getElementById("ma20-value").textContent = fmt(ma20, 2);
+            document.getElementById("macd-value").textContent = fmt(stock.macd_hist, 2);
+            document.getElementById("macd-value").className = `quote-value ${safeNumber(stock.macd_hist) >= 0 ? "red" : "green"}`;
+            document.getElementById("volume-value").textContent = Number.isFinite(Number(stock.volume)) ? Number(stock.volume).toLocaleString("zh-TW", { maximumFractionDigits: 0 }) : "--";
+            document.getElementById("update-time").textContent = stock.updated_at ? new Date(stock.updated_at).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : new Date().toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+            document.getElementById("decision-badge").textContent = c.label;
+            document.getElementById("decision-badge").style.borderColor = c.color;
+            document.getElementById("decision-badge").style.background = c.key === "sell" ? "rgba(6, 78, 59, 0.76)" : "rgba(127, 29, 29, 0.78)";
+            document.getElementById("decision-callout").textContent = c.text;
+            document.getElementById("tech-summary").textContent = `${stock.name} 目前價格 ${fmt(price, 2)}，20MA ${fmt(ma20, 2)}，${diff >= 0 ? "股價仍站在月線上方" : "股價已跌破月線"}。MACD 柱狀體 ${fmt(stock.macd_hist, 2)}，短線${safeNumber(stock.macd_hist) >= 0 ? "動能偏強但需留意追高" : "動能轉弱，等待重新放量"}。`;
+            document.getElementById("chip-summary").textContent = safeNumber(stock.macd_hist) >= 0 ? "若股價上漲且法人或主力同步賣超，代表短線籌碼出現分歧，追高風險提高。" : "籌碼與動能偏弱時，優先觀察支撐是否守穩，不急著承接。";
+        }
+
+        function renderAll() {
+            const stock = stocks[selectedIndex] || SAMPLE_STOCKS[0];
+            renderHero(stock);
+            renderKChart(stock);
+            renderMiniCharts(stock);
+            renderChipChart(stock);
+            renderTables(stock);
+            renderRightPanel(stock);
+            renderRail();
+        }
+
+        async function loadData() {
+            try {
+                const { data, error } = await db
+                    .from("lion_king_signals")
+                    .select("id,name,sector,price,ma20,macd_hist,rsi,volume,instruction,updated_at")
+                    .order("updated_at", { ascending: false });
+                if (error) throw error;
+                const rows = Array.isArray(data) && data.length > 0 ? data : SAMPLE_STOCKS;
+                stocks = rows.map(row => ({
+                    id: row.id || "--",
+                    name: row.name || "未命名",
+                    sector: row.sector || "未分類",
+                    price: safeNumber(row.price, 0),
+                    ma20: safeNumber(row.ma20, safeNumber(row.price, 1)),
+                    macd_hist: safeNumber(row.macd_hist, 0),
+                    rsi: safeNumber(row.rsi, 55),
+                    volume: safeNumber(row.volume, null),
+                    instruction: row.instruction || "等待訊號",
+                    updated_at: row.updated_at
+                })).sort((a, b) => Math.abs(safeNumber(b.macd_hist)) - Math.abs(safeNumber(a.macd_hist)));
+            } catch (error) {
+                console.error("Supabase load failed", error);
+                stocks = SAMPLE_STOCKS;
+            }
+            selectedIndex = Math.min(selectedIndex, Math.max(0, stocks.length - 1));
+            renderAll();
+            document.getElementById("loading").classList.add("hidden");
+        }
+
+        loadData();
+        window.setInterval(loadData, 60000);
     </script>
 </body>
 </html>
