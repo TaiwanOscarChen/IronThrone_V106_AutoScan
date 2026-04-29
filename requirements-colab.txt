@@ -1,0 +1,17 @@
+# Optional dependencies for the Colab research modules.
+# GitHub Actions uses requirements.txt only.
+yfinance
+pandas
+numpy
+requests
+supabase
+pytz
+beautifulsoup4
+feedparser
+lxml
+gradio
+ipywidgets
+FinMind
+shioaji
+tejapi
+pandas-ta
