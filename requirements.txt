@@ -1,4 +1,15 @@
 yfinance
 pandas
-supabase
+numpy
 requests
+supabase
+pytz
+beautifulsoup4
+feedparser
+lxml
+gradi0
+ipywidgets
+FinMind
+shioaji
+tejapi
+pandas_ta
